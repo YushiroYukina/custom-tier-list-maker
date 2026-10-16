@@ -2,11 +2,25 @@
 
 一个直接在浏览器中使用的图文分级排行榜工具。把图片加入素材池，拖进自定义档位，再导出 PNG 图片或 JSON 存档。无需安装、登录或配置后端。
 
+## 下载即用
+
+**[下载完整便携版 ZIP](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/custom-tier-list-maker-v0.1.0.zip)** · [查看发布页](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest)
+
+| 你想怎么用 | 下载入口 | 打开方式 |
+| --- | --- | --- |
+| 推荐：工具、模板和说明一起下载 | [完整便携版 ZIP](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/custom-tier-list-maker-v0.1.0.zip) | 完整解压，双击 `index.html` |
+| 只要一个能用的网页文件 | [单文件 HTML](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/custom-tier-list-maker.html) | 下载后用浏览器打开 |
+| 核对下载文件 | [SHA256 校验值](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/SHA256SUMS.txt) | 比较文件的 SHA256 |
+
+无需安装，也不需要 Python、Node.js 或账号。建议在电脑上使用现代版 Edge、Chrome 等浏览器；已在 Windows 的 Tabbit 浏览器中验证基本操作。Mac、Linux 可尝试浏览器打开，尚未逐平台验收。手机和平板的触控体验尚未做真机验收。
+
+**三步开始：下载并打开 → 添加自己的图片 → 拖进档位并导出。** 可为动画、书籍、游戏、影视、美食等内容自定义分级。
+
 ![工具界面](assets/screenshot.png)
 
 ## 快速开始
 
-1. 下载仓库 ZIP 并解压，双击 `index.html`，使用桌面版 Chrome、Edge 等现代浏览器打开。
+1. 点击上方“完整便携版 ZIP”，完整解压后双击 `index.html`，或直接下载并打开单文件 HTML。
 2. 点击标题或档位文字修改名称，使用档位旁的按钮调整颜色、清空或删除档位，底部可新增档位。
 3. 点击“添加图片”，选择一张或多张本地图片。图片会自动压缩后加入素材池，卡片文字可直接编辑。
 4. 将卡片从素材池拖入档位，在档位内或档位间拖拽排序。
