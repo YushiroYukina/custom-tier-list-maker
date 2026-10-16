@@ -54,10 +54,12 @@
 
 ## 技术结构
 
-纯 HTML、CSS、原生 JavaScript；浏览器 IndexedDB/localStorage 持久化，Canvas 生成 PNG，FileReader 读取本地图片。直接部署静态文件即可，当前包尚未发布到 GitHub 或任何站点。
+纯 HTML、CSS、原生 JavaScript；浏览器 IndexedDB/localStorage 持久化，Canvas 生成 PNG，FileReader 读取本地图片。直接部署静态文件即可。
+
+代码仓库：[YushiroYukina/custom-tier-list-maker](https://github.com/YushiroYukina/custom-tier-list-maker)。在线页面托管尚未启用。
 
 为兼容既有 JSON，保留 `app: "hanla-ranking"`、`version: 1` 和原有数据字段。工具显示名称已统一更新。
 
 ## 许可与素材
 
-此准备包尚未指定开源许可证。公开仓库不等于授予他人使用、修改或再分发的许可，正式发布前请由维护者选择许可证并确认原始代码的发布授权。当前包的色块演示图由简单几何图形生成，不包含个人榜单、动画封面或 Excel 数据。用户自行导入图片的权利归相应权利人所有。
+本项目尚未指定开源许可证。公开仓库不等于授予他人使用、修改或再分发的许可，正式发布前请由维护者选择许可证并确认原始代码的发布授权。当前包的色块演示图由简单几何图形生成，不包含个人榜单、动画封面或 Excel 数据。用户自行导入图片的权利归相应权利人所有。

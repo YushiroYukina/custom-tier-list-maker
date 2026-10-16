@@ -1,6 +1,8 @@
 # GitHub 发布准备
 
-建议仓库名：`custom-tier-list-maker`
+当前公开仓库：[YushiroYukina/custom-tier-list-maker](https://github.com/YushiroYukina/custom-tier-list-maker)
+
+本地维护目录：通过 GitHub Desktop 中的 `custom-tier-list-maker` 仓库管理。
 
 建议描述：通用自定义排行榜制作工具：在浏览器中拖拽图文卡片、自定义档位，支持素材池、JSON 存档和 PNG 导出。
 
@@ -14,8 +16,8 @@
 
 1. 确认原始代码发布授权，选择开源许可证并增加 `LICENSE`。本包不擅自指定许可证或虚构作者归属。
 2. 复查 README 的界面、功能和已知限制是否符合准备发布的版本。
-3. 在 GitHub 创建目标仓库，把本目录内容上传到仓库根目录，保持 `index.html`、README 和示例目录结构。
-4. 如需在线访问，可另行启用静态页面托管；本准备包未创建仓库、推送代码或启用站点。
+3. 后续更新在本地仓库修改，提交后通过 GitHub Desktop 推送，保持 `index.html`、README 和示例目录结构。
+4. 如需在线访问，可另行启用静态页面托管；当前已创建公开仓库并推送代码，尚未启用页面托管。
 5. 如制作 Release，使用通用名称 ZIP，并附上 CHANGELOG 内容。不要把个人榜单 JSON、图片和浏览器存储当作演示素材提交。
 
 ## 本地检查
