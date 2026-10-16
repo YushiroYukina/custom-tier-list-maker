@@ -1,0 +1,44 @@
+{
+  "app": "hanla-ranking",
+  "version": 1,
+  "exportedAt": 0,
+  "title": "我的自定义排行榜",
+  "data": {
+    "title": "我的自定义排行榜",
+    "tiers": [
+      {
+        "id": "tr1",
+        "label": "S",
+        "color": "#e8a33d",
+        "items": []
+      },
+      {
+        "id": "tr2",
+        "label": "A",
+        "color": "#e2654f",
+        "items": []
+      },
+      {
+        "id": "tr3",
+        "label": "B",
+        "color": "#4f88c8",
+        "items": []
+      },
+      {
+        "id": "tr4",
+        "label": "C",
+        "color": "#5aa96a",
+        "items": []
+      },
+      {
+        "id": "tr5",
+        "label": "D",
+        "color": "#77859a",
+        "items": []
+      }
+    ],
+    "pool": [],
+    "items": {},
+    "nextId": 1
+  }
+}

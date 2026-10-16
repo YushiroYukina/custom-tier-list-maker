@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>通用自定义排行榜制作工具</title>
+<meta name="description" content="在浏览器中自定义分级、拖拽图文卡片，导出排行榜图片与 JSON 存档。">
+<style>
+  /* ===================== 基础与变量 ===================== */
+  :root{
+    --bg:#15161b;
+    --bg-2:#191b21;
+    --panel:#1e2129;
+    --panel-2:#262a35;
+    --panel-3:#2e3340;
+    --line:#333947;
+    --line-2:#404756;
+    --text:#f2f0ea;
+    --text-2:#9aa1ad;
+    --text-3:#6b7280;
+    --accent:#f0b04f;
+    --accent-ink:#17140d;
+    --danger:#e2654f;
+    --ok:#5aa96a;
+    --radius:14px;
+    --shadow:0 14px 34px rgba(0,0,0,.4);
+    --font-body:'Noto Sans SC',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    --font-display:'Noto Serif SC',Georgia,'Songti SC','SimSun',serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(232,163,61,.08), transparent 60%),
+      radial-gradient(900px 500px at -10% 30%, rgba(79,136,200,.07), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:14px;
+    line-height:1.5;
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+  }
+  ::selection{background:rgba(240,176,79,.32)}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input{font-family:inherit}
+  img{display:block}
+
+  /* ===================== 顶栏 ===================== */
+  header.topbar{
+    position:sticky;top:0;z-index:30;
+    background:rgba(21,22,27,.86);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{
+    max-width:1280px;margin:0 auto;padding:12px 20px;
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:0}
+  .brand-mark{
+    width:34px;height:34px;flex:0 0 34px;border-radius:10px;
+    background:linear-gradient(135deg,#e8a33d,#c97a46);
+    display:flex;align-items:center;justify-content:center;
+    color:#17140d;box-shadow:0 4px 14px rgba(232,163,61,.35);
+  }
+  .brand-mark svg{width:20px;height:20px}
+  .brand-titles{min-width:0}
+  .title-line{display:flex;align-items:center;gap:6px}
+  .title-edit{
+    color:var(--text-3);display:flex;align-items:center;justify-content:center;
+    width:24px;height:24px;border-radius:7px;flex:0 0 24px;
+    transition:background .15s,color .15s;
+  }
+  .title-edit:hover{background:rgba(255,255,255,.08);color:var(--accent)}
+  .title-edit svg{width:13px;height:13px}
+  .brand-titles h1:empty::before{content:'点击输入标题';color:var(--text-3);font-family:var(--font-body);font-weight:400}
+  .brand-titles h1{
+    font-family:var(--font-display);
+    font-size:19px;font-weight:900;letter-spacing:.5px;
+    line-height:1.2;
+    outline:none;border-radius:6px;
+    padding:1px 6px;margin-left:-6px;cursor:text;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(52vw,420px);
+  }
+  .brand-titles h1:hover{background:rgba(255,255,255,.06)}
+  .brand-titles p{font-size:12px;color:var(--text-2)}
+  .toolbar{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;
+    padding:8px 13px;border-radius:10px;
+    background:var(--panel-2);border:1px solid var(--line-2);
+    color:var(--text);font-size:13px;font-weight:500;
+    transition:background .15s,transform .05s,border-color .15s;
+    user-select:none;-webkit-user-select:none;
+  }
+  .btn:hover{background:var(--panel-3);border-color:#4c5466}
+  .btn:active{transform:translateY(1px)}
+  .btn svg{width:16px;height:16px;flex:0 0 16px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+  .btn.primary:hover{background:#f6bd66}
+  .btn.ghost{background:transparent}
+  .btn.danger-hover:hover{border-color:var(--danger);color:var(--danger)}
+  .btn.sm{padding:5px 9px;font-size:12px;border-radius:8px}
+  .btn.sm svg{width:13px;height:13px;flex:0 0 13px}
+
+  /* ===================== 主区 ===================== */
+  main{flex:1 1 auto;max-width:1280px;margin:0 auto;width:100%;padding:20px 20px 8px}
+
+  .hintbar{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    font-size:12.5px;color:var(--text-2);
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:9px 14px;margin-bottom:16px;
+  }
+  .hintbar .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:0 0 7px}
+  .hintbar b{color:var(--text);font-weight:600}
+  .hintbar .sep{opacity:.4;margin:0 2px}
+
+  /* ===================== 档位（排行轨道） ===================== */
+  #board{display:flex;flex-direction:column;gap:10px}
+  .tier{
+    display:flex;align-items:stretch;
+    border-radius:var(--radius);
+    background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,0));
+    transition:background .2s;
+  }
+  .tier-plate{
+    position:relative;z-index:2;
+    flex:0 0 148px;min-height:132px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    background:var(--tc, #565b66);
+    color:#14161b;
+    padding:12px 18px;
+    clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+    box-shadow:inset -8px 0 14px rgba(0,0,0,.22), 0 8px 20px rgba(0,0,0,.28);
+  }
+  .tier-label{
+    font-size:16px;font-weight:900;letter-spacing:.5px;line-height:1.3;
+    text-align:center;max-width:120px;
+    outline:none;border-radius:6px;padding:1px 5px;cursor:text;
+    word-break:break-word;
+  }
+  .tier-label:hover{background:rgba(0,0,0,.12)}
+  .tier-meta{font-size:11px;font-weight:700;opacity:.75;letter-spacing:.5px}
+  .tier-tools{display:flex;gap:4px;margin-top:2px}
+  .tier-tools button{
+    width:22px;height:22px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.16);color:#14161b;opacity:.85;
+    transition:background .15s,opacity .15s;
+  }
+  .tier-tools button:hover{background:rgba(0,0,0,.32);opacity:1}
+  .tier-tools svg{width:13px;height:13px}
+
+  .tier-track{
+    position:relative;flex:1 1 auto;
+    min-height:132px;
+    background:rgba(0,0,0,.22);
+    border:1px dashed var(--line-2);
+    border-left:none;
+    border-radius:0 var(--radius) var(--radius) 0;
+    display:flex;align-items:flex-start;flex-wrap:wrap;gap:10px;
+    padding:12px;max-width:1038px;overflow-x:hidden;overflow-y:auto;
+    transition:border-color .18s,background .18s;
+    scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;
+  }
+  .tier-track::-webkit-scrollbar{height:8px}
+  .tier-track::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+  .tier-track.is-drop{border-color:var(--accent);background:rgba(240,176,79,.06)}
+  .tier-empty{
+    align-self:center;width:100%;text-align:center;
+    color:var(--text-3);font-size:12.5px;letter-spacing:2px;pointer-events:none;
+    user-select:none;-webkit-user-select:none;
+  }
+
+  /* ===================== 素材卡片 ===================== */
+  .item-card{
+    position:relative;flex:0 0 118px;width:118px;
+    background:var(--panel-2);
+    border:1px solid var(--line-2);
+    border-radius:12px;overflow:hidden;
+    cursor:grab;
+    user-select:none;-webkit-user-select:none;
+    touch-action:none;
+    transition:box-shadow .18s,border-color .18s,transform .18s;
+  }
+  .item-card:hover{border-color:#515a6d;box-shadow:0 6px 16px rgba(0,0,0,.3);transform:translateY(-2px)}
+  .item-card.source-drag{opacity:.28}
+  .item-card .thumb{position:relative;width:100%;height:94px;background:#1a1d24;overflow:hidden}
+  .item-card .thumb img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+  .item-card .item-name{
+    padding:7px 10px 8px;font-size:13px;text-align:center;
+    min-height:30px;outline:none;cursor:text;line-height:1.35;
+    word-break:break-word;
+  }
+  .item-card .item-name:focus{background:rgba(240,176,79,.1)}
+  .item-card .item-remove{
+    position:absolute;top:5px;right:5px;width:22px;height:22px;
+    border-radius:50%;background:rgba(0,0,0,.55);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;opacity:0;transition:opacity .15s,background .15s;
+  }
+  .item-card:hover .item-remove{opacity:1}
+  .item-card .item-remove:hover{background:var(--danger)}
+  .item-card .item-remove svg{width:12px;height:12px}
+  .item-card .grab-handle{
+    position:absolute;top:5px;left:5px;width:22px;height:22px;border-radius:6px;
+    background:rgba(0,0,0,.42);color:#e6e4dc;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .item-card:hover .grab-handle{opacity:1}
+  .item-card .grab-handle svg{width:12px;height:12px}
+
+  /* 拖拽中 */
+  #dragGhost{
+    position:fixed;left:0;top:0;width:120px;z-index:70;
+    background:var(--panel-2);border:1px solid var(--accent);
+    border-radius:12px;overflow:hidden;
+    box-shadow:0 18px 40px rgba(0,0,0,.55);
+    pointer-events:none;
+    transform:translate(-50%,-55%) rotate(3deg);
+  }
+  #dragGhost .thumb{width:100%;height:96px;overflow:hidden}
+  #dragGhost .thumb img{width:100%;height:100%;object-fit:cover}
+  #dragGhost .item-name{padding:6px 8px;font-size:13px;text-align:center}
+  .insert-line{
+    position:absolute;top:8px;bottom:8px;width:3px;border-radius:2px;
+    background:var(--accent);box-shadow:0 0 10px rgba(240,176,79,.8);
+    z-index:6;pointer-events:none;
+  }
+  .add-tier{
+    margin-top:2px;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:14px;border-radius:var(--radius);
+    border:1.5px dashed var(--line-2);color:var(--text-2);font-size:13.5px;
+    transition:border-color .15s,color .15s,background .15s;
+  }
+  .add-tier:hover{border-color:var(--accent);color:var(--accent);background:rgba(240,176,79,.05)}
+  .add-tier svg{width:16px;height:16px}
+
+  /* ===================== 素材池 ===================== */
+  #pool{
+    margin:16px 0 8px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .pool-head{
+    display:flex;align-items:center;gap:10px;
+    padding:12px 16px;border-bottom:1px solid var(--line);
+  }
+  .pool-head .pool-title{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px}
+  .pool-head .pool-title svg{width:17px;height:17px;color:var(--accent)}
+  .pool-count{
+    font-size:11.5px;color:var(--text-2);background:var(--panel-3);
+    padding:2px 9px;border-radius:20px;font-weight:600;
+  }
+  .pool-head .pool-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .pool-hint{font-size:12px;color:var(--text-3);margin-left:8px;display:none}
+  .pool-track{
+    position:relative;
+    display:flex;flex-wrap:wrap;gap:10px;
+    padding:14px 16px;max-height:340px;overflow-y:auto;
+    transition:max-height .25s ease;
+  }
+  #pool.collapsed .pool-track{max-height:0;padding-top:0;padding-bottom:0;overflow:hidden}
+  #pool.collapsed .pool-head{border-bottom:none}
+  .pool-track.is-drop{border-radius:0 0 var(--radius) var(--radius)}
+  .pool-track.is-drop{box-shadow:inset 0 0 0 2px var(--accent);border-radius:0 0 var(--radius) var(--radius)}
+  .pool-empty{
+    width:100%;text-align:center;color:var(--text-3);font-size:13px;padding:22px 0;
+    pointer-events:none;
+  }
+
+  /* ===================== 弹窗 ===================== */
+  .modal-mask{
+    position:fixed;inset:0;z-index:80;
+    background:rgba(8,9,12,.66);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;backdrop-filter:blur(3px);
+  }
+  .modal{
+    width:min(560px,94vw);max-height:86vh;overflow:auto;
+    background:var(--panel);border:1px solid var(--line-2);
+    border-radius:16px;box-shadow:var(--shadow);
+    padding:20px 22px;
+  }
+  .modal h2{font-size:17px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+  .modal h2 svg{width:18px;height:18px;color:var(--accent)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;color:var(--text-2);margin-bottom:6px;font-weight:600}
+  .field input[type=text]{
+    width:100%;padding:10px 12px;border-radius:10px;
+    background:var(--bg-2);border:1px solid var(--line-2);color:var(--text);
+    font-size:13.5px;outline:none;transition:border-color .15s;
+  }
+  .field input[type=text]:focus{border-color:var(--accent)}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap}
+  .demo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+  .demo-cell{
+    border:1px solid var(--line-2);border-radius:10px;overflow:hidden;padding:4px;cursor:pointer;
+    background:var(--bg-2);transition:border-color .15s,transform .15s;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+  }
+  .demo-cell:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .demo-cell img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px}
+  .demo-cell span{font-size:11px;color:var(--text-2);padding-bottom:2px}
+  .upload-zone{
+    border:1.5px dashed var(--line-2);border-radius:12px;
+    padding:18px;text-align:center;color:var(--text-2);font-size:13px;cursor:pointer;
+    transition:border-color .15s,background .15s;
+  }
+  .upload-zone:hover{border-color:var(--accent);background:rgba(240,176,79,.05)}
+  .upload-zone svg{width:22px;height:22px;margin-bottom:6px;color:var(--text-3)}
+  .upload-zone strong{color:var(--text);font-weight:600}
+
+  /* 模板列表 */
+  .tpl-list{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .tpl-row{
+    display:flex;align-items:center;gap:12px;
+    background:var(--bg-2);border:1px solid var(--line);
+    border-radius:12px;padding:11px 13px;
+  }
+  .tpl-row .tpl-avatar{
+    width:40px;height:40px;border-radius:9px;flex:0 0 40px;
+    background:linear-gradient(135deg,#e8a33d,#c97a46);color:#17140d;
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;
+  }
+  .tpl-row .tpl-info{flex:1 1 auto;min-width:0}
+  .tpl-row .tpl-info .name{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tpl-row .tpl-info .meta{font-size:11.5px;color:var(--text-3);margin-top:1px}
+  .tpl-row .tpl-ops{display:flex;gap:6px}
+  .tpl-empty{color:var(--text-3);text-align:center;padding:26px 0;font-size:13px}
+  .save-tpl-row{display:flex;gap:8px;margin-bottom:8px}
+  .save-tpl-row input[type=text]{flex:1;min-width:0;padding:9px 12px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line-2);color:var(--text);font-size:13.5px;outline:none}
+  .save-tpl-row input[type=text]:focus{border-color:var(--accent)}
+
+  /* 调色板 */
+  .palette{
+    position:absolute;left:0;top:calc(100% + 6px);z-index:60;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+    background:var(--panel-3);border:1px solid var(--line-2);
+    border-radius:10px;padding:8px;box-shadow:var(--shadow);
+  }
+  .palette button{width:22px;height:22px;border-radius:6px;border:2px solid rgba(255,255,255,.18)}
+  .palette button:hover{transform:scale(1.12)}
+
+  /* 卡片操作菜单（单击排行卡片弹出） */
+  .card-menu{
+    position:fixed;z-index:90;min-width:140px;
+    background:var(--panel-3);border:1px solid var(--line-2);
+    border-radius:10px;box-shadow:var(--shadow);padding:5px;
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .card-menu button{
+    display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+    padding:8px 10px;border-radius:7px;font-size:13px;color:var(--text);
+  }
+  .card-menu button svg{width:16px;height:16px;flex:none}
+  .card-menu button:hover{background:rgba(255,255,255,.08)}
+  .card-menu button.danger{color:#e2654f}
+  .card-menu button.danger:hover{background:rgba(226,101,79,.14)}
+
+  /* Toast */
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-3);color:var(--text);border:1px solid var(--line-2);
+    padding:10px 18px;border-radius:12px;font-size:13px;z-index:100;
+    opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+    box-shadow:var(--shadow);max-width:86vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.warn{border-color:var(--danger)}
+
+  footer{max-width:1280px;margin:0 auto;width:100%;padding:4px 20px 18px;color:var(--text-3);font-size:11.5px;text-align:center}
+
+  /* ===================== 响应式 ===================== */
+  @media (max-width:768px){
+    .topbar-inner{padding:10px 12px;gap:10px}
+    .brand-titles p{display:none}
+    .brand-titles h1{font-size:16px;max-width:44vw}
+    .toolbar .btn{font-size:12px;padding:7px 10px}
+    .toolbar .btn .btn-text{display:none}
+    .toolbar .btn svg{width:17px;height:17px;flex:0 0 17px}
+    main{padding:14px 12px 6px}
+    .hintbar .hint-hide-on-mobile{display:none}
+    .tier{flex-direction:column}
+    .tier-plate{
+      flex:0 0 auto;flex-direction:row;min-height:44px;
+      clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+      padding:6px 16px;gap:8px;justify-content:flex-start;
+    }
+    .tier-label{font-size:14px}
+    .tier-meta{font-size:10px}
+    .tier-tools{margin-left:auto;margin-top:0}
+    .tier-track{border-left:1px dashed var(--line-2);border-top:none;border-radius:0 0 var(--radius) var(--radius);min-height:96px}
+    .item-card{flex:0 0 104px;width:104px}
+    .item-card .thumb{height:82px}
+    .demo-grid{grid-template-columns:repeat(3,1fr)}
+    .pool-track{max-height:none}
+  }
+  @media (max-width:420px){
+    .tier-track .item-card{flex:0 0 92px;width:92px}
+    .item-card .thumb{height:72px}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21h20"/><path d="M6 21V9l6-5 6 5v12"/><path d="M6 21h12"/><path d="M10 14h4v7h-4z"/></svg>
+      </div>
+      <div class="brand-titles">
+        <div class="title-line">
+          <h1 id="titleText" contenteditable="plaintext-only" spellcheck="false" title="点击编辑标题">通用自定义排行榜制作工具</h1>
+          <button class="title-edit" id="btnEditTitle" title="点击编辑标题">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          </button>
+        </div>
+        <p>拖拽图片 · 自定文字 · 模板存档</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btnOpenTpl" title="打开 / 保存模板">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span class="btn-text">模板</span>
+      </button>
+      <button class="btn" id="btnAddItem" title="添加图片">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+        <span class="btn-text">添加图片</span>
+      </button>
+      <button class="btn" id="btnExportImg" title="导出排行榜为图片">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+        <span class="btn-text">导出图片</span>
+      </button>
+      <button class="btn" id="btnExportJson" title="导出 JSON 模板文件">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+        <span class="btn-text">导出</span>
+      </button>
+      <button class="btn" id="btnImportJson" title="导入 JSON 模板文件">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+        <span class="btn-text">导入</span>
+      </button>
+      <button class="btn ghost danger-hover" id="btnClear" title="清空并新建">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <span class="btn-text">清空</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="hintbar">
+    <span class="dot"></span>
+    <span><b>玩法：</b>点按文字可直接改名</span><span class="sep">·</span>
+    <span>档位文字<b>回车换行</b></span><span class="sep">·</span>
+    <span>按住卡片<b>拖拽</b>排序 · 单击可<b>放回素材池</b></span><span class="sep">·</span>
+    <span>把底部素材拖进档位完成排行</span><span class="sep hint-hide-on-mobile">·</span>
+    <span class="hint-hide-on-mobile">触屏<b>长按</b>卡片后拖动</span>
+  </div>
+
+  <section id="board"></section>
+
+  <section id="pool">
+    <div class="pool-head">
+      <span class="pool-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+        素材池
+      </span>
+      <span class="pool-count" id="poolCount">0 张</span>
+      <span class="pool-hint" id="poolHint">拖拽卡片到上方档位完成排行</span>
+      <div class="pool-actions">
+        <button class="btn sm" id="btnCollapse">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          <span id="collapseText">收起</span>
+        </button>
+      </div>
+    </div>
+    <div class="pool-track" id="poolTrack"></div>
+  </section>
+</main>
+
+<details class="tool-guide" style="max-width:1200px;margin:20px auto;padding:16px 24px;line-height:1.8">
+<summary>工具说明与适用范围</summary>
+<p>通用自定义排行榜制作工具：适合动画、书籍、游戏、影视、音乐、美食等个人分级、偏好比较和素材整理。点击标题、档位名和卡片文字可编辑，上传图片后从素材池拖入档位。</p>
+<p>支持档位增删与配色、图片批量添加、模板保存、JSON 存档及 PNG 图片导出。PNG 仅包含上方分级区，每行最多 12 张，封面按 2:3 居中裁切，长标题最多显示两行。</p>
+<p>本工具不读取 Excel，不自动抓取封面或计算排名。数据保存在当前浏览器，建议定期导出 JSON；使用外站图片时会向图片网站发起请求，跨域限制可能导致图片无法导出。优先使用本地图片。</p>
+<p><a href="docs/USER_GUIDE.md">详细使用说明</a> · <a href="README.md">项目介绍</a></p>
+</details>
+<footer>通用自定义排行榜制作工具 · 数据自动保存在本地浏览器 · 支持导出 / 导入 JSON 存档</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ===================== 常量 ===================== */
+var STORE_KEY = 'hanla_ranking_v1';
+var TEMPLATES_KEY = 'hanla_templates_v1';
+var ACCENT = '#f0b04f';
+
+var DEMO_IMAGES = [
+  {
+    "text": "示例 1",
+    "img": "data:image/png;base64,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"
+  },
+  {
+    "text": "示例 2",
+    "img": "data:image/png;base64,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"
+  },
+  {
+    "text": "示例 3",
+    "img": "data:image/png;base64,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"
+  },
+  {
+    "text": "示例 4",
+    "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAGMCAIAAACptatmAAAGwUlEQVR4nO3d0W0UVxSAYROlt/RABSuqSBnbAiWkuwiBiDF/LGPW3jNzvu+NB2DvnfPPnZUR8+Hj508PwI/+ePJrQBjQnBgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBD+fDiL619/3/sj8MXlnzNciA8fP396OCwxDHc5bCRHDUMSB3I5YB4HC0MPh3Y5TiFH+vKtiqO7Hud74DFOjANtKOc4Og5wYqjifK7j73TTw5i/g5zyyo4OY/jeceLrOzeMybvG6a/y0DDG7hdLrvXEMGbuFKuu+LgwBu4RC6/7rDCm7Q5rr/6sMGCIQWGMumGwfAamhDFnR7ivIZMwJQwYRRgwNYwhpydDXAfMw4gwYJr7hzHh9sA013tPxf3DgIGEAUEYMC+Muz9KMtb1rrPhxIAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDDj1e75P/K4t/zj//QnjAG+de/J7dfIOhHG8tzB+/zMV8naEceC3kirk7QjjDC/q/fqXOkBuSBjneXe1PG5IGGdI4jF53IQwzpPEY/L4TX7Ad8IqDvQJx3JinHzgHB2v48Q4cxWH/sz3JYwtE3bcT34XHqUWDZbHqpdzYmyp4pRreTvC2DhJ51vRzQlj6QyddV23Ioy903Pu1f0mYayemw1rfB1hQBDG9lvpnpX+EmGEbbOybb0vIYyndk7JzlU/QxgQhPGDzTfOzWv/mTD+YzLswHfCgCCMb9ws7cNjwoAgjC8cF49dfAsXBiQnhhtkuKw/NIQBYXsYbo12Jm0PA5IwQBg/8hz1vMvir+BODAjCgLA3jM3PCS932bpLe8OAZwgDgjAgCAPC0jDWfqd8hcvKvVoaBjxPGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCWhnH9a+M/pX6d68q9WhoGPE8YEIQBQRgQ9oax8zvlr7pu3aW9YcAzhAFhdRhrnxNe6Lp4f1aHAf9HGBC2h7H5aeF51907sz0MSMLYfmtM1/V7IgwIwvjCDfKx6/rjQhjQnBjfuE3ah8eEAUEY/3Fo2IHvhPGDzZOxee0/EwYEYTy188a5c9XPEEbYNiXb1vsSwtg+K3tW+kuEAUEYq2+lG9b4OsLYOzfnXt1vEsbS6Tnrum5FGBtn6HwrujlhrJukM63l7fz5hn/2uXydp8s/B54qSbycE2PLbB33k9+FMFZM2BE/8315lDr5Y5UkXseJceaZm/8Jx3JinPPokMRvEsbZ8pDETQjjPHlI4oaEcYY8JHFzwnjbSX3TQvTwdoRxvEL08A6E8U6eTPMvdaKE9yeM+zDrw/kBHwRhQBAGBGFAEAYEYUAQBgRhQBAGBGFAEAYEYUAQBgRhwLwwhvwHAgx0uetsODEgCAOCMGBkGL5mMHAq7h8GDDQijLvfHhjlMmAeRoQB0wgDBocx4fRkgsuMSZgSxpwd4Y7mzMCgMGCOWWHMuWGw/OrPCmPa7rD2uo8LY+AesfCKTwxj5k6x6loPDWPsfrHkKs8NY/KucfrrOzqM4XvHia/s9DDm7yCnvKYfPn7+9HAQXs91ApfxSRzmxDjcnnKCK3ikE+Mxp8eBXI7Tw+HD+Eoew10OmMQZwnhMJENcDhvDOcOApV++4d0IA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjBAGPAyTgwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgIef/QsmOk3pyCLiiAAAAABJRU5ErkJggg=="
+  },
+  {
+    "text": "示例 5",
+    "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAGMCAIAAACptatmAAAG1klEQVR4nO3d3XEjRRSAUUNtNsSiSAiBZ0IhAgVAFORDbS0sXvvD5R/Jc3v6nDceAHX3/aZHtRT66Y9f/3wAfvTzk78GhAHNjQFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAeHLw1lcfv/l6I/AV9ff/npY39phiGH4oVyXjWTVMCSx0DFdF8xjsTD0sKLLv3fIQoWs9OVbFau7rPM9cI0bY6EN5RwvVwvcGKo4n8v4J930MObvIKc82dFhDN87Tny+c8OYvGuc/pSHhjF2v9jkrCeGMXOn2OrEx4UxcI/Y8NxnhTFtd9j29GeFAUMMCmPUA4PNZ2BKGHN2hGMNmYQpYcAowoCpYQy5PRniMmAeRoQB0xwfxoTHA9Ncjp6K48OAgYQBQRgwL4zDXyUZ63LobLgxIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDlv2psfN5029t+Y/zP58wPslHfnXuyd+rk08gjPu6x68wfv9nKuR+hHEXn/OrpAq5H2Hc2CE/1PvtX+oCuSFh3Mzhv10tjxsSxhmSeEweNyGM8yTxmDw+yB/wnbCKhT7hWG6Mkw+cq+N93BhnrmLpz3wsYewyYet+8kN4ldposLxWvZ4bY5cqTrmW+xHGjpN0vhXdnDA2naGzrutWhLHv9Jx7dR8kjK3nZoc1vo8wIAhj90fpPit9E2GE3WZlt/W+hjCe2nNK9lz1C4QBQRg/2PnBufPanxPGf0yGHfhOGBCE8Q8PS/vwmDAgCOMr18VjV9/ChQHJjeEBGa7bXxrCgLB7GB6NdibtHgYkYYAwfuQ96mXXjb+CuzEgCAPCvmHs/J7wetddd2nfMOAFwoAgDAjCgLBpGNt+p3yH65Z7tWkY8DJhQBAGBGFAEAYEYUAQBgRhQBAGBGFAEAYEYUAQBgRhQNg0jMvvvxz9EZZx2XKvNg0DXiYMCMKAIAwI+4ax53fKt7rsukv7hgEvEAaErcPY9j3hlS4b78/WYcD/EQaE3cPY+W3hZZe9d2b3MCAJY/dHY7psvyfCgCCMrzwgH7tsf10IA5ob4x8ek/bhMWFAEMZ/XBp24Dth/GDnydh57c8JA4Iwntrzwbnnql8gjLDblOy23tcQxu6zss9K30QYEISx9aN0hzW+jzD2nZtzr+6DhLHp9Jx1XbcijB1n6HwrujlhbDdJZ1rL/Xy54z/7XL7N0/W3vx6WJYnXc2PsMlvrfvJDCGOLCVvxMx/Lq9TJX6sk8T5ujDPP3PxPOJYb45xXhyQ+SBhny0MSNyGM8+QhiRsSxhnykMTNCeO+k3rXQvRwP8JYrxA9fAJhfJIn0/ymTpTw+YRxDLM+nD/ggyAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMmBfGkP+BAANdD50NNwYEYUAQBowMw9cMBk7F8WHAQCPCOPzxwCjXAfMwIgyYRhgwOIwJtycTXGdMwpQw5uwIB5ozA4PCgDlmhTHngcHmpz8rjGm7w7bnPi6MgXvEhic+MYyZO8VWZz00jLH7xSanPDeMybvG6c93dBjD944Tn+z0MObvIKc80y8L7aOf5zqB6/gklrkxlttTTnCCa9wYz3fW7bGQ6zo9rBrGd16ulnBdMIm1w3i+7+6QIa7LxnCeMM53Hgyx0pdv+DTCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwQBryOGwOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCAIA4Iw4OG5vwGGZk8yzUiljgAAAABJRU5ErkJggg=="
+  },
+  {
+    "text": "示例 6",
+    "img": "data:image/png;base64,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"
+  },
+  {
+    "text": "示例 7",
+    "img": "data:image/png;base64,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"
+  },
+  {
+    "text": "示例 8",
+    "img": "data:image/png;base64,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"
+  }
+];
+var MIGRATE_MAP = {
+  'https://aka.doubaocdn.com/s/heeIB88gUx':'demo:0',
+  'https://aka.doubaocdn.com/s/71DE8GmuDT':'demo:1',
+  'https://aka.doubaocdn.com/s/EBvXRKIhit':'demo:2',
+  'https://aka.doubaocdn.com/s/3PDZbBoTLs':'demo:3',
+  'https://aka.doubaocdn.com/s/VTTaojbKJe':'demo:4',
+  'https://aka.doubaocdn.com/s/POeNeu3DbR':'demo:5',
+  'https://aka.doubaocdn.com/s/ZdOsgVCd2G':'demo:6',
+  'https://aka.doubaocdn.com/s/unpJ8U17RT':'demo:7'
+};
+
+var TIER_COLORS = ['#e8a33d','#e2654f','#4f88c8','#5aa96a','#a56bbf','#77859a','#c97a46','#565b66'];
+var DEFAULT_TIERS = [
+  {label:'夯 · 顶级', color:'#e8a33d'},
+  {label:'强 · 能打', color:'#e2654f'},
+  {label:'中 · 凑合', color:'#4f88c8'},
+  {label:'弱 · 兜底', color:'#77859a'},
+  {label:'拉 · 垫底', color:'#565b66'}
+];
+
+/* ===================== 状态 ===================== */
+var state = null;
+var templates = [];
+var saveTimer = null;
+var toastTimer = null;
+var usingIDB = false;
+
+/* ---- 持久化层：优先 IndexedDB（容量大、不再撑爆 localStorage），不可用则回退 localStorage ---- */
+var KV = (function(){
+  var useIDB = false;
+  try{ useIDB = !!window.indexedDB; }catch(e){ useIDB = false; }
+  var dbPromise = null;
+  function idbOpen(){
+    return new Promise(function(res, rej){
+      var req;
+      try{ req = indexedDB.open('hanla_ranking_db', 1); }
+      catch(e){ rej(e); return; }
+      req.onupgradeneeded = function(e){
+        var db = e.target.result;
+        if(!db.objectStoreNames.contains('kv')){ db.createObjectStore('kv'); }
+      };
+      req.onsuccess = function(){ res(req.result); };
+      req.onerror = function(){ rej(req.error); };
+    });
+  }
+  function idbRun(mode, fn){
+    if(!dbPromise){ dbPromise = idbOpen().catch(function(err){ dbPromise = null; throw err; }); }
+    return dbPromise.then(function(db){
+      return new Promise(function(res, rej){
+        var t = db.transaction('kv', mode);
+        var s = t.objectStore('kv');
+        var r;
+        try{ r = fn(s); }catch(e){ rej(e); return; }
+        r.onsuccess = function(){ res(r.result); };
+        r.onerror = function(){ rej(r.error); };
+      });
+    });
+  }
+  function fbSave(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ throw e; } }
+  function fbLoad(k){ try{ var s = localStorage.getItem(k); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
+  function fbDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+  return {
+    isIDB: function(){ return useIDB; },
+    save: function(key, val){
+      if(useIDB){
+        return idbRun('readwrite', function(s){ return s.put(val, key); }).catch(function(){
+          useIDB = false; fbSave(key, val); return Promise.resolve();
+        });
+      }
+      fbSave(key, val); return Promise.resolve();
+    },
+    load: function(key){
+      if(useIDB){
+        return idbRun('readonly', function(s){ return s.get(key); }).then(function(v){ return v === undefined ? null : v; })
+          .catch(function(){ useIDB = false; return Promise.resolve(fbLoad(key)); });
+      }
+      return Promise.resolve(fbLoad(key));
+    },
+    del: function(key){
+      if(useIDB){
+        return idbRun('readwrite', function(s){ return s.delete(key); }).catch(function(){ useIDB = false; fbDel(key); return Promise.resolve(); });
+      }
+      fbDel(key); return Promise.resolve();
+    }
+  };
+})();
+
+function defaultState(){
+  var items = {}; var pool = []; var n = 1;
+  DEMO_IMAGES.forEach(function(d){
+    var id = 'it' + (n++);
+    items[id] = {id:id, text:d.text, img:'demo:'+(n-2)};
+    pool.push(id);
+  });
+  var tiers = DEFAULT_TIERS.map(function(d, i){
+    return {id:'tr'+(i+1), label:d.label, color:d.color, items:[]};
+  });
+  return {title:'通用自定义排行榜制作工具', tiers:tiers, pool:pool, items:items, nextId:n};
+}
+
+function loadTemplates(){
+  // 优先 IndexedDB；无数据则回退旧版 localStorage
+  return KV.load('templates').then(function(v){
+    if(v) return v;
+    try{
+      var raw = localStorage.getItem(TEMPLATES_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){ return []; }
+  });
+}
+function persistTemplates(){
+  KV.save('templates', templates).then(function(){}, function(){
+    showToast('模板保存失败：本地存储空间不足','warn');
+  });
+}
+
+function loadState(){
+  return KV.load('state').then(function(v){
+    if(v) return v;
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      var parsed = raw ? JSON.parse(raw) : null;
+      if(parsed && parsed.tiers && parsed.items && Array.isArray(parsed.pool)) return parsed;
+    }catch(e){}
+    return null;
+  });
+}
+function init(){
+  Promise.all([loadState(), loadTemplates()]).then(function(res){
+    if(res[0]){ state = res[0]; } else { state = defaultState(); }
+    templates = res[1] || [];
+    usingIDB = KV.isIDB();
+    // 数据已安全迁入 IndexedDB 后，清掉旧版 localStorage 的大块数据，释放空间
+    if(usingIDB){
+      try{ localStorage.removeItem(STORE_KEY); localStorage.removeItem(TEMPLATES_KEY); }catch(e){}
+    }
+    migrateItems();
+    bindEvents();
+    render();
+  }).catch(function(){
+    state = defaultState();
+    bindEvents();
+    render();
+  });
+}
+
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    KV.save('state', state).then(function(){}, function(){
+      showToast('本地存储空间不足，建议用「导出 JSON」备份','warn');
+    });
+  }, 260);
+}
+
+/* ===================== 渲染 ===================== */
+function render(){
+  document.getElementById('titleText').textContent = state.title;
+  renderBoard();
+  renderPool();
+}
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escBr(s){ return esc(s).replace(/\n/g,'<br>'); }
+
+// 解析图片地址：演示图用短令牌（demo:N）引用内嵌 data URL，不占用本地存储
+function resolveImg(it){
+  if(!it || !it.img) return '';
+  if(typeof it.img === 'string' && it.img.indexOf('demo:') === 0){
+    var n = parseInt(it.img.slice(5), 10);
+    var d = DEMO_IMAGES[n];
+    return d ? d.img : '';
+  }
+  return it.img;
+}
+// 本地图片压缩：等比缩到 maxDim 以内，显著减小体积，缓解存储压力与渲染卡顿
+function downscaleDataURL(dataUrl, maxDim, quality, cb){
+  var img = new Image();
+  img.onload = function(){
+    try{
+      var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      var scale = Math.min(1, maxDim / Math.max(w, h));
+      var nw = Math.max(1, Math.round(w*scale)), nh = Math.max(1, Math.round(h*scale));
+      var c = document.createElement('canvas');
+      c.width = nw; c.height = nh;
+      var x = c.getContext('2d');
+      x.drawImage(img, 0, 0, nw, nh);
+      // 检测透明度：有透明像素则用 PNG 保留透明，否则用 JPEG 压缩
+      var hasAlpha = false;
+      try{
+        var dd = x.getImageData(0,0,nw,nh).data;
+        for(var ai=3;ai<dd.length;ai+=4){ if(dd[ai] < 250){ hasAlpha = true; break; } }
+      }catch(e){ hasAlpha = /png|gif|webp/i.test(String(dataUrl).slice(0,40)); }
+      cb(hasAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', quality || 0.82));
+    }catch(e){ cb(dataUrl); }
+  };
+  img.onerror = function(){ cb(dataUrl); };
+  img.src = dataUrl;
+}
+
+// 将旧的不可导出演示图地址迁移为内嵌 data URL
+function migrateItems(){
+  var changed = false;
+  Object.keys(state.items || {}).forEach(function(id){
+    var it = state.items[id];
+    if(!it || !it.img || typeof it.img !== 'string') return;
+    var v = it.img;
+    // 1) 旧 aka 短链 → 演示图令牌
+    if(MIGRATE_MAP[v]){ it.img = MIGRATE_MAP[v]; changed = true; return; }
+    // 2) 完整 data URL 形式的演示图 → 演示图令牌（省空间）
+    for(var i=0;i<DEMO_IMAGES.length;i++){
+      if(DEMO_IMAGES[i].img === v){ it.img = 'demo:'+i; changed = true; return; }
+    }
+  });
+  if(changed){ save(); }
+}
+
+function cardHTML(id){
+  var it = state.items[id];
+  if(!it) return '';
+  return '<div class="item-card" data-itemid="'+id+'">' +
+    '<div class="grab-handle"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></div>' +
+    '<button class="item-remove" data-act="remove" title="移除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
+    '<div class="thumb"><img src="'+esc(resolveImg(it))+'" alt="" loading="lazy" decoding="async"></div>' +
+    '<div class="item-name" contenteditable="plaintext-only" spellcheck="false" title="点击改名">'+esc(it.text)+'</div>' +
+    '</div>';
+}
+
+function renderBoard(){
+  var board = document.getElementById('board');
+  var html = '';
+  state.tiers.forEach(function(t){
+    html += '<div class="tier" data-tierid="'+t.id+'">' +
+      '<div class="tier-plate" style="--tc:'+t.color+'">' +
+        '<div class="tier-label" contenteditable="plaintext-only" spellcheck="false" data-f="tierlabel" data-id="'+t.id+'" title="点击改名，回车可换行">'+escBr(t.label)+'</div>' +
+        '<div class="tier-meta">'+t.items.length+' 项</div>' +
+        '<div class="tier-tools">' +
+          '<button data-act="tiercolor" data-id="'+t.id+'" title="改颜色"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".8" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".8" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".8" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".8" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.511 5.563-5.563C23 6.5 17.5 2 12 2z"/></svg></button>' +
+          '<button data-act="tierclear" data-id="'+t.id+'" title="清空本档位图片（全部放回素材池）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="m7 9 5 5 5-5"/><path d="M4 20h16"/></svg></button>' +
+          '<button data-act="tierdel" data-id="'+t.id+'" title="删除档位（图片退回素材池）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tier-track" data-tierid="'+t.id+'">' +
+        (t.items.length ? t.items.map(cardHTML).join('') : '<div class="tier-empty">拖入素材</div>') +
+      '</div>' +
+    '</div>';
+  });
+  html += '<button class="add-tier" id="btnAddTier">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>' +
+    '添加档位（如 S / A / B / 新名字…）</button>';
+  board.innerHTML = html;
+}
+
+function renderPool(){
+  var track = document.getElementById('poolTrack');
+  if(state.pool.length){
+    track.innerHTML = state.pool.map(cardHTML).join('');
+  } else {
+    track.innerHTML = '<div class="pool-empty">素材池空啦 —— 点击右上角「添加图片」放入素材</div>';
+  }
+  document.getElementById('poolCount').textContent = state.pool.length + ' 张';
+  document.getElementById('poolHint').style.display = state.pool.length ? 'inline-block' : 'none';
+}
+
+/* ===================== 拖拽（指针统一，支持鼠标与触屏长按） ===================== */
+var down = null; // {x,y,itemId,from,pointerId,timer,started,ghost,target,index,longPress}
+var insertLine = null;
+
+function findItemSource(id){
+  if(state.pool.indexOf(id) >= 0) return 'pool';
+  for(var i=0;i<state.tiers.length;i++){
+    if(state.tiers[i].items.indexOf(id) >= 0) return state.tiers[i].id;
+  }
+  return null;
+}
+
+function onPointerDown(e){
+  var card = e.target.closest('.item-card');
+  if(!card) return;
+  // 文字编辑 / 移除按钮不触发拖拽
+  if(e.target.closest('.item-name') || e.target.closest('.item-remove')) return;
+  e.preventDefault();
+  var id = card.getAttribute('data-itemid');
+  var from = findItemSource(id);
+  if(from == null) return;
+  down = {x:e.clientX, y:e.clientY, itemId:id, from:from, pointerId:e.pointerId, started:false, ghost:null, target:null, index:0, timer:null, longPress:false};
+  if(e.pointerType === 'mouse'){
+    // 鼠标：移动即拖
+  } else {
+    // 触屏：长按 300ms 进入拖拽，避免与滚动冲突
+    down.longPress = true;
+    down.timer = setTimeout(function(){
+      if(down){ startDrag(); }
+    }, 300);
+  }
+  if(down && !down.started && e.pointerType === 'mouse'){
+    try{ card.setPointerCapture(e.pointerId); }catch(err){}
+  }
+}
+
+function onPointerMove(e){
+  if(!down || e.pointerId !== down.pointerId) return;
+  var dx = e.clientX - down.x, dy = e.clientY - down.y;
+  if(!down.started){
+    if(down.longPress){
+      // 触屏长按模式下，手指移动超过阈值则取消长按（视为滚动）
+      if(Math.hypot(dx,dy) > 10){
+        clearTimeout(down.timer);
+        down = null;
+      }
+      return;
+    } else {
+      if(Math.hypot(dx,dy) < 5) return;
+      startDrag();
+      if(down) updateDrag(e);
+      return;
+    }
+  }
+  updateDrag(e);
+}
+
+function onPointerUp(e){
+  if(!down || (down.started && e.pointerId !== down.pointerId)) { return; }
+  if(down.started){
+    finishDrag();
+  } else {
+    // 单击排行里的卡片（未拖动）→ 弹出操作菜单
+    var card = document.querySelector('.item-card[data-itemid="'+down.itemId+'"]');
+    if(card && down.from !== 'pool'){
+      openCardMenu(card, down.itemId);
+    }
+  }
+  cleanupDown();
+}
+
+function onPointerCancel(e){
+  if(!down || e.pointerId !== down.pointerId) return;
+  cleanupDown();
+}
+
+function startDrag(){
+  var d = down; if(!d) return;
+  var card = document.querySelector('.item-card[data-itemid="'+d.itemId+'"]');
+  if(!card){ cleanupDown(); return; }
+  d.started = true;
+  if(d.timer){ clearTimeout(d.timer); d.timer = null; }
+  var ghost = card.cloneNode(true);
+  ghost.id = 'dragGhost';
+  ghost.removeAttribute('data-itemid');
+  var rm = ghost.querySelector('.item-remove'); if(rm) rm.remove();
+  var gh = ghost.querySelector('.grab-handle'); if(gh) gh.remove();
+  ghost.style.left = (d.x) + 'px';
+  ghost.style.top = (d.y) + 'px';
+  document.body.appendChild(ghost);
+  d.ghost = ghost;
+  card.classList.add('source-drag');
+  document.body.classList.add('is-dragging');
+}
+
+function ensureInsertLine(){
+  if(!insertLine){
+    insertLine = document.createElement('div');
+    insertLine.className = 'insert-line';
+  }
+  return insertLine;
+}
+
+function computeInsertIndex(track, x, y){
+  var cards = track.querySelectorAll('.item-card');
+  if(!cards.length) return 0;
+  // 档位轨道与素材池均为网格自动换行：找最近卡片，按 x 判断前后
+  var best = null, bestD = Infinity;
+  for(var i=0;i<cards.length;i++){
+    var r = cards[i].getBoundingClientRect();
+    var cx = r.left + r.width/2, cy = r.top + r.height/2;
+    var dd = (x-cx)*(x-cx) + (y-cy)*(y-cy);
+    if(dd < bestD){ bestD = dd; best = cards[i]; }
+  }
+  var br = best.getBoundingClientRect();
+  var bCx = br.left + br.width/2;
+  var idx = Array.prototype.indexOf.call(cards, best);
+  return x > bCx ? idx + 1 : idx;
+}
+
+function updateDrag(e){
+  var d = down; if(!d || !d.ghost) return;
+  d.ghost.style.left = e.clientX + 'px';
+  d.ghost.style.top = e.clientY + 'px';
+
+  var el = document.elementFromPoint(e.clientX, e.clientY);
+  var trackEl = null;
+  if(el){
+    trackEl = el.closest('.tier-track') || el.closest('.pool-track');
+  }
+  // 清除旧高亮
+  var prev = document.querySelector('.tier-track.is-drop, .pool-track.is-drop');
+  if(prev && prev !== trackEl) prev.classList.remove('is-drop');
+
+  if(!trackEl){
+    if(insertLine && insertLine.parentNode) insertLine.parentNode.removeChild(insertLine);
+    d.target = null;
+    return;
+  }
+  // 自动横向滚动
+  var tr = trackEl.getBoundingClientRect();
+  if(trackEl.scrollWidth > trackEl.clientWidth){
+    if(e.clientX > tr.right - 50) trackEl.scrollLeft += 14;
+    else if(e.clientX < tr.left + 50) trackEl.scrollLeft -= 14;
+  }
+  var kind = trackEl.classList.contains('pool-track') ? 'pool' : trackEl.getAttribute('data-tierid');
+  var index = computeInsertIndex(trackEl, e.clientX, e.clientY);
+  d.target = {el:trackEl, kind:kind, index:index};
+  trackEl.classList.add('is-drop');
+
+  // 放置插入指示线
+  var line = ensureInsertLine();
+  if(line.parentNode !== trackEl){ trackEl.appendChild(line); }
+  var cards = trackEl.querySelectorAll('.item-card');
+  var left;
+  if(!cards.length){ left = 10; }
+  else if(index === 0){
+    left = cards[0].getBoundingClientRect().left - tr.left - 6;
+  } else if(index < cards.length){
+    left = cards[index].getBoundingClientRect().left - tr.left - 6;
+  } else {
+    left = cards[cards.length-1].getBoundingClientRect().right - tr.left;
+  }
+  left = Math.max(6, Math.min(left, tr.width - 8));
+  line.style.left = left + 'px';
+}
+
+function finishDrag(){
+  var d = down; if(!d) return;
+  if(d.target){
+    var idx = d.target.index;
+    if(d.from === d.target.kind){
+      var arr = (d.from === 'pool') ? state.pool : state.tiers.filter(function(t){return t.id===d.from;})[0].items;
+      var cur = arr.indexOf(d.itemId);
+      if(idx > cur) idx--;
+      arr.splice(cur,1);
+      arr.splice(Math.max(0, Math.min(idx, arr.length)), 0, d.itemId);
+    } else {
+      if(d.from === 'pool'){
+        state.pool.splice(state.pool.indexOf(d.itemId),1);
+      } else {
+        var t1 = state.tiers.filter(function(t){return t.id===d.from;})[0];
+        t1.items.splice(t1.items.indexOf(d.itemId),1);
+      }
+      var arr2 = (d.target.kind === 'pool') ? state.pool : state.tiers.filter(function(t){return t.id===d.target.kind;})[0].items;
+      arr2.splice(Math.max(0, Math.min(idx, arr2.length)), 0, d.itemId);
+    }
+    save();
+    render();
+  }
+}
+
+function cleanupDown(){
+  if(down){
+    if(down.timer) clearTimeout(down.timer);
+    if(down.ghost && down.ghost.parentNode) down.ghost.parentNode.removeChild(down.ghost);
+    var src = document.querySelector('.item-card.source-drag');
+    if(src) src.classList.remove('source-drag');
+    document.body.classList.remove('is-dragging');
+    if(insertLine && insertLine.parentNode) insertLine.parentNode.removeChild(insertLine);
+    var tgt = document.querySelector('.tier-track.is-drop, .pool-track.is-drop');
+    if(tgt) tgt.classList.remove('is-drop');
+  }
+  down = null;
+}
+
+/* ===================== 事件绑定 ===================== */
+function bindEvents(){
+  document.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+  document.addEventListener('pointercancel', onPointerCancel);
+
+  // 标题（顶栏点击编辑 / 铅笔按钮聚焦）
+  var titleEl = document.getElementById('titleText');
+  titleEl.addEventListener('input', function(){ state.title = titleEl.textContent || ''; save(); });
+  titleEl.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); titleEl.blur(); } });
+  document.getElementById('btnEditTitle').addEventListener('click', function(){
+    titleEl.focus();
+    var range = document.createRange();
+    range.selectNodeContents(titleEl);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+
+  // 文字编辑（档位名 / 卡片名，事件委托）
+  document.addEventListener('input', function(e){
+    if(e.target.classList && e.target.classList.contains('tier-label')){
+      var t = getTier(e.target.getAttribute('data-id'));
+      if(t){ t.label = e.target.innerText; save(); }
+    } else if(e.target.classList && e.target.classList.contains('item-name')){
+      var it = state.items[e.target.closest('.item-card').getAttribute('data-itemid')];
+      if(it){ it.text = e.target.textContent || '未命名'; save(); }
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && e.target.classList){
+      // 卡片名称：回车确认并退出编辑
+      if(e.target.classList.contains('item-name')){
+        e.preventDefault(); e.target.blur();
+      }
+      // 档位文字：回车插入手动换行（保留默认行为，不拦截）
+    }
+  });
+
+  // 顶栏按钮
+  document.getElementById('btnAddItem').addEventListener('click', openAddItemModal);
+  document.getElementById('btnOpenTpl').addEventListener('click', openTplModal);
+  document.getElementById('btnExportImg').addEventListener('click', exportImage);
+  document.getElementById('btnExportJson').addEventListener('click', exportJSON);
+  document.getElementById('btnImportJson').addEventListener('click', function(){ document.getElementById('fileImport').click(); });
+  document.getElementById('btnClear').addEventListener('click', onClear);
+
+  // 板块事件（委托）
+  document.getElementById('board').addEventListener('click', function(e){
+    var addTier = e.target.closest('#btnAddTier');
+    if(addTier){ addTierFn(); return; }
+    var btn = e.target.closest('[data-act]');
+    if(!btn) return;
+    var act = btn.getAttribute('data-act');
+    var id = btn.getAttribute('data-id');
+    if(act === 'tierdel'){ delTier(id); }
+    else if(act === 'tiercolor'){ openPalette(btn, id); }
+    else if(act === 'tierclear'){ clearTierItems(id); }
+  });
+  document.getElementById('poolTrack').addEventListener('click', function(e){
+    var btn = e.target.closest('.item-remove');
+    if(btn){ removeItem(btn.closest('.item-card').getAttribute('data-itemid')); }
+  });
+
+  document.getElementById('btnCollapse').addEventListener('click', function(){
+    var pool = document.getElementById('pool');
+    pool.classList.toggle('collapsed');
+    var col = document.getElementById('collapseText');
+    col.textContent = pool.classList.contains('collapsed') ? '展开' : '收起';
+  });
+
+  // 导入文件
+  var fileImport = document.getElementById('fileImport');
+  fileImport.addEventListener('change', function(){ importJSON(fileImport.files[0]); fileImport.value=''; });
+  // 遮罩点击关闭
+  document.addEventListener('pointerdown', function(e){
+    if(e.target.classList && e.target.classList.contains('modal-mask')) closeModal();
+  });
+}
+
+function getTier(id){
+  for(var i=0;i<state.tiers.length;i++) if(state.tiers[i].id === id) return state.tiers[i];
+  return null;
+}
+
+/* ===================== 档位操作 ===================== */
+function addTierFn(){
+  var used = state.tiers.length;
+  state.tiers.push({id:'tr'+(state.nextId++), label:'新档位', color:TIER_COLORS[used % TIER_COLORS.length], items:[]});
+  save(); render();
+  showToast('已添加档位，点标签可改名');
+}
+function delTier(id){
+  var t = getTier(id); if(!t) return;
+  t.items.forEach(function(iid){ state.pool.push(iid); });
+  state.tiers = state.tiers.filter(function(x){ return x.id !== id; });
+  save(); render();
+  showToast('档位已删除，图片已退回素材池');
+}
+function removeItem(id){
+  var from = findItemSource(id);
+  if(from === 'pool') state.pool.splice(state.pool.indexOf(id),1);
+  else if(from){ var t = getTier(from); t.items.splice(t.items.indexOf(id),1); }
+  delete state.items[id];
+  save(); render();
+}
+function moveToPool(id){
+  var from = findItemSource(id);
+  if(from === 'pool') return;
+  if(from){
+    var t = getTier(from);
+    if(t){ t.items.splice(t.items.indexOf(id),1); }
+  }
+  state.pool.push(id);
+  save(); render();
+  showToast('已放回素材池');
+}
+function clearTierItems(id){
+  var t = getTier(id); if(!t || !t.items.length) return;
+  t.items.forEach(function(iid){ state.pool.push(iid); });
+  t.items = [];
+  save(); render();
+  showToast('已将该档位全部图片放回素材池');
+}
+function openCardMenu(card, itemId){
+  var old = document.querySelector('.card-menu');
+  if(old) old.remove();
+  var menu = document.createElement('div');
+  menu.className = 'card-menu';
+  var r = card.getBoundingClientRect();
+  var mw = 150;
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw)) + 'px';
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.innerHTML =
+    '<button data-cm="topool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="m7 9 5 5 5-5"/><path d="M4 20h16"/></svg>放回素材池</button>' +
+    '<button data-cm="remove" class="danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>删除卡片</button>';
+  document.body.appendChild(menu);
+  menu.querySelector('[data-cm="topool"]').addEventListener('click', function(){
+    moveToPool(itemId); menu.remove();
+  });
+  menu.querySelector('[data-cm="remove"]').addEventListener('click', function(){
+    removeItem(itemId); menu.remove();
+  });
+  setTimeout(function(){
+    document.addEventListener('pointerdown', function handler(ev){
+      if(menu && menu.parentNode && !menu.contains(ev.target)){
+        menu.remove();
+        document.removeEventListener('pointerdown', handler);
+      }
+    });
+  }, 0);
+}
+
+function openPalette(anchor, tierId){
+  var existing = document.querySelector('.palette');
+  if(existing) existing.remove();
+  var pal = document.createElement('div');
+  pal.className = 'palette';
+  // 固定在 body 上，避免被档位铭牌的 clip-path 裁切
+  var r = anchor.getBoundingClientRect();
+  pal.style.position = 'fixed';
+  pal.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 132)) + 'px';
+  pal.style.top = (r.bottom + 6) + 'px';
+  pal.style.zIndex = 90;
+  TIER_COLORS.forEach(function(c){
+    var b = document.createElement('button');
+    b.style.background = c;
+    b.title = c;
+    b.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      var t = getTier(tierId); if(t){ t.color = c; save(); render(); }
+      pal.remove();
+    });
+    pal.appendChild(b);
+  });
+  document.body.appendChild(pal);
+  setTimeout(function(){
+    document.addEventListener('pointerdown', function handler(ev){
+      if(!pal.contains(ev.target)){ pal.remove(); document.removeEventListener('pointerdown', handler); }
+    });
+  }, 0);
+}
+
+/* ===================== 弹窗 ===================== */
+function openModal(html){
+  // 先移除已存在的弹窗，避免多次打开导致遮罩叠加、无法关闭
+  var old = document.querySelector('.modal-mask');
+  if(old) old.remove();
+  var mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.innerHTML = '<div class="modal" role="dialog">' + html + '</div>';
+  document.body.appendChild(mask);
+}
+function closeModal(){
+  var m = document.querySelector('.modal-mask');
+  if(m) m.remove();
+}
+
+function svgIcon(name){
+  var map = {
+    close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+  };
+  return map[name] || '';
+}
+
+/* ---- 添加图片 ---- */
+function openAddItemModal(){
+  var demos = DEMO_IMAGES.map(function(d,i){
+    return '<div class="demo-cell" data-demo="'+i+'"><img src="'+esc(d.img)+'" alt=""><span>'+esc(d.text)+'</span></div>';
+  }).join('');
+  openModal(
+    '<div class="modal-head-row" style="display:flex;align-items:center;justify-content:space-between">' +
+      '<h2 style="margin-bottom:0">添加图片素材</h2>' +
+      '<button class="btn sm ghost" data-close>'+svgIcon('close')+'</button>' +
+    '</div>' +
+    '<div style="height:14px"></div>' +
+    '<div class="field"><label>图片链接（外站图片可能限制导出，推荐上传本地图片）</label>' +
+      '<input type="text" id="imgUrl" placeholder="https://… 或粘贴图片地址"></div>' +
+    '<div class="field"><label>卡片文字（可留空，之后点文字可改）</label>' +
+      '<input type="text" id="imgText" placeholder="例如：奶茶"></div>' +
+    '<div class="field"><label>或上传本地图片（多张）</label>' +
+      '<div class="upload-zone" id="uploadZone">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>' +
+        '<div><strong>点击选择文件</strong> · 支持 png / jpg / gif / webp</div>' +
+        '<input type="file" id="fileAdd" accept="image/*" multiple style="display:none">' +
+      '</div>' +
+    '</div>' +
+    '<div class="field"><label>一键添加演示图</label><div class="demo-grid">'+demos+'</div></div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn" data-close>取消</button>' +
+      '<button class="btn primary" id="btnUrlAdd">添加链接图片</button>' +
+    '</div>'
+  );
+  var mask = document.querySelector('.modal-mask');
+  mask.querySelectorAll('[data-close]').forEach(function(btn){ btn.addEventListener('click', closeModal); });
+  mask.querySelector('#btnUrlAdd').addEventListener('click', function(){
+    var url = (mask.querySelector('#imgUrl').value || '').trim();
+    var text = (mask.querySelector('#imgText').value || '').trim();
+    if(!url){ showToast('请先填写图片链接','warn'); return; }
+    addItems([{img:url, text:text}]);
+    closeModal();
+    showToast('已添加');
+  });
+  mask.querySelector('.upload-zone').addEventListener('click', function(){
+    mask.querySelector('#fileAdd').click();
+  });
+  mask.querySelector('#fileAdd').addEventListener('change', function(){
+    var files = Array.prototype.slice.call(this.files);
+    handleFiles(files);
+    this.value = '';
+  });
+  mask.querySelectorAll('.demo-cell').forEach(function(cell){
+    cell.addEventListener('click', function(){
+      var di = parseInt(cell.getAttribute('data-demo'),10);
+      var d = DEMO_IMAGES[di];
+      addItems([{img:'demo:'+di, text:d.text}]);
+      closeModal();
+      showToast('已加入素材池');
+    });
+  });
+}
+
+function addItems(list){
+  list.forEach(function(it){
+    var id = 'it' + (state.nextId++);
+    state.items[id] = {id:id, text:it.text || '未命名', img:it.img};
+    state.pool.push(id);
+  });
+  save(); render();
+}
+
+function handleFiles(files){
+  var total = 0;
+  files.forEach(function(f){
+    if(!f.type || f.type.indexOf('image/') !== 0){ return; }
+    total++;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var id = 'it' + (state.nextId++);
+      var src = ev.target.result;
+      // 压缩后再入池：显著减小体积，缓解卡顿与存储压力
+      downscaleDataURL(src, 480, 0.82, function(img){
+        state.items[id] = {id:id, text:baseName(f.name), img:img};
+        state.pool.push(id);
+        save(); render();
+      });
+    };
+    reader.readAsDataURL(f);
+  });
+  if(total === 0){ showToast('没有可用的图片文件','warn'); return; }
+  closeModal();
+  showToast('已添加 ' + total + ' 张图片（已自动压缩）');
+}
+function baseName(name){
+  name = name.replace(/\.[^.]+$/,'');
+  return name.length > 14 ? name.slice(0,14)+'…' : name;
+}
+
+/* ---- 模板 ---- */
+function fmtDate(ts){
+  var d = new Date(ts);
+  return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+' '+pad2(d.getHours())+':'+pad2(d.getMinutes());
+}
+function tplMeta(t){
+  if(t.kind === 'structure' || (t.tiers && !t.state)){
+    return ((t.tiers||[]).length) + ' 个档位 · 保存于 ' + fmtDate(t.savedAt);
+  }
+  return countItems(t.state) + ' 张图片 · 保存于 ' + fmtDate(t.savedAt);
+}
+
+function openTplModal(){
+  var listHtml;
+  if(!templates.length){
+    listHtml = '<div class="tpl-empty">还没有保存过模板。把档位文字和颜色排好后，点「保存模板」存档，之后载入即可套用这套档位。</div>';
+  } else {
+    listHtml = '<div class="tpl-list">' + templates.map(function(t, i){
+      return '<div class="tpl-row">' +
+        '<div class="tpl-avatar">'+(i+1)+'</div>' +
+        '<div class="tpl-info"><div class="name">'+esc(t.name)+'</div><div class="meta">'+tplMeta(t)+'</div></div>' +
+        '<div class="tpl-ops">' +
+          '<button class="btn sm primary" data-tpl-load="'+i+'" title="载入">载入</button>' +
+          '<button class="btn sm ghost danger-hover" data-tpl-del="'+i+'" title="删除">删除</button>' +
+        '</div></div>';
+    }).join('') + '</div>';
+  }
+  openModal(
+    '<div class="modal-head-row" style="display:flex;align-items:center;justify-content:space-between">' +
+      '<h2 style="margin-bottom:0">模板管理</h2>' +
+      '<button class="btn sm ghost" data-close>'+svgIcon('close')+'</button>' +
+    '</div>' +
+    '<div style="height:14px"></div>' +
+    '<div class="field"><label>排行榜标题（显示在最顶上，可直接修改）</label>' +
+      '<input type="text" id="tplTitle" value="'+esc(state.title)+'" maxlength="40" placeholder="通用自定义排行榜制作工具"></div>' +
+    '<div class="field"><label>存档方式</label></div>' +
+    '<div class="save-tpl-row">' +
+      '<input type="text" id="tplName" placeholder="模板名称（留空则用标题）">' +
+      '<button class="btn primary" id="btnSaveStructure" title="只保存档位文字与颜色，不含图片">保存模板</button>' +
+    '</div>' +
+    '<div class="save-tpl-row">' +
+      '<button class="btn" id="btnSaveDemo" style="width:100%">保存当前演示（含图片 · 导出为一张图）</button>' +
+    '</div>' +
+    '<div class="field" style="margin-top:16px"><label>我的模板</label></div>' +
+    listHtml
+  );
+  var mask = document.querySelector('.modal-mask');
+  mask.querySelectorAll('[data-close]').forEach(function(btn){ btn.addEventListener('click', closeModal); });
+
+  // 标题实时同步到顶栏
+  var titleInput = mask.querySelector('#tplTitle');
+  titleInput.addEventListener('input', function(){
+    state.title = titleInput.value;
+    document.getElementById('titleText').textContent = state.title;
+    save();
+  });
+
+  // 保存结构模板（仅档位文字与颜色，不含项目图片）
+  mask.querySelector('#btnSaveStructure').addEventListener('click', function(){
+    var name = (mask.querySelector('#tplName').value || '').trim() || (state.title || '').trim();
+    if(!name){ showToast('请输入模板名称','warn'); return; }
+    templates.push({
+      id:'tpl'+Date.now(), name:name, savedAt:Date.now(), kind:'structure',
+      title: state.title || '',
+      tiers: state.tiers.map(function(t){ return {label:t.label, color:t.color}; })
+    });
+    persistTemplates();
+    showToast('已保存模板「'+name+'」');
+    openTplModal();
+  });
+
+  // 保存当前演示：含图片的完整排行榜，导出为一张图
+  mask.querySelector('#btnSaveDemo').addEventListener('click', function(){
+    closeModal();
+    exportImage();
+  });
+
+  mask.querySelectorAll('[data-tpl-load]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var t = templates[parseInt(b.getAttribute('data-tpl-load'),10)];
+      if(!t) return;
+      loadTemplate(t);
+    });
+  });
+  mask.querySelectorAll('[data-tpl-del]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var i = parseInt(b.getAttribute('data-tpl-del'),10);
+      if(!confirm('确定删除该模板？')) return;
+      templates.splice(i,1);
+      persistTemplates();
+      openTplModal();
+    });
+  });
+}
+
+function loadTemplate(t){
+  // 兼容旧版全量模板（含图片）
+  if(t.state && t.state.tiers && t.state.items){
+    if(hasAnyItem() && !confirm('载入模板将覆盖当前排行榜，确定继续？')) return;
+    state = clone(t.state);
+  } else if(t.tiers){
+    if(hasAnyItem() && !confirm('载入模板将应用标题与档位文字、颜色，并清空当前图片，确定继续？')) return;
+    var tiers = t.tiers.map(function(d, i){
+      return {id:'tr'+(i+1), label:d.label, color:d.color, items:[]};
+    });
+    state = {title: t.title || '通用自定义排行榜制作工具', tiers: tiers, pool: [], items: {}, nextId: 1};
+  } else {
+    showToast('模板数据无效','warn');
+    return;
+  }
+  migrateItems();
+  save(); render(); closeModal();
+  showToast('已载入模板「'+t.name+'」');
+}
+
+function countItems(s){
+  if(!s || !s.items) return 0;
+  return Object.keys(s.items).length;
+}
+function hasAnyItem(){
+  return Object.keys(state.items).length > 0;
+}
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function pad2(n){ return n < 10 ? '0'+n : ''+n; }
+
+/* ---- 导出 / 导入 JSON ---- */
+function exportJSON(){
+  var payload = {app:'hanla-ranking', version:1, exportedAt:Date.now(), title:state.title, data:state};
+  var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '通用自定义排行榜制作工具-' + dateStamp() + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  showToast('已导出 JSON 模板文件');
+}
+function importJSON(file){
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      var obj = JSON.parse(ev.target.result);
+      var data = (obj && obj.data) ? obj.data : obj;
+      if(!data || !data.tiers || !data.items || !Array.isArray(data.pool)){
+        showToast('文件格式不正确','warn'); return;
+      }
+      if(hasAnyItem() && !confirm('导入将覆盖当前排行榜，确定继续？')) return;
+      state = data;
+      migrateItems();
+      save(); render();
+      showToast('已导入模板');
+    }catch(e){ showToast('导入失败：不是有效的 JSON','warn'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ---- 清空 ---- */
+function onClear(){
+  if(hasAnyItem() && !confirm('清空将丢弃当前所有图片与排序，且无法撤销。确定？')) return;
+  state = defaultState();
+  save(); render();
+  showToast('已清空，恢复初始状态');
+}
+
+/* ---- 导出图片 ---- */
+function exportImage(){
+  if(!hasAnyItem()){
+    showToast('排行榜是空的，先放点图片吧','warn'); return;
+  }
+  var title = state.title || '通用自定义排行榜制作工具';
+  // 导出时让封面连成整齐的图片墙；文字仍各占一格，并用细线区分。
+  var cellW = 132, cellH = 254, imgH = 198, gap = 0, pad = 18, plateW = 186, rowPad = 0, tierGap = 10;
+  var MAX_COL = 12; // 每行最多 12 张，超过自动换行
+  var maxCount = 1;
+  state.tiers.forEach(function(t){ if(t.items.length > maxCount) maxCount = t.items.length; });
+  var effCols = Math.min(maxCount, MAX_COL);
+  var boardW = Math.max(760, pad*2 + plateW + 10 + effCols*cellW + 20);
+  var titleH = 74;
+  var boardH = pad*2 + titleH;
+  state.tiers.forEach(function(t){
+    boardH += Math.max(1, Math.ceil(t.items.length / MAX_COL)) * (cellH + rowPad*2) + tierGap;
+  });
+  var canvas = document.createElement('canvas');
+  canvas.width = boardW; canvas.height = boardH;
+  var ctx = canvas.getContext('2d');
+
+  // 背景
+  ctx.fillStyle = '#17181d';
+  ctx.fillRect(0,0,boardW,boardH);
+  // 标题
+  ctx.fillStyle = '#f2f0ea';
+  ctx.font = '900 40px "Noto Serif SC","Songti SC",serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(title, boardW/2, pad + 44);
+  ctx.textAlign = 'left';
+
+  var ids = [];
+  state.tiers.forEach(function(t){ t.items.forEach(function(id){ ids.push(id); }); });
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+  // 按测量宽度自动换行
+  function wrapText(text, maxWidth){
+    var lines = [];
+    var cur = '';
+    for(var i=0;i<text.length;i++){
+      var test = cur + text[i];
+      if(ctx.measureText(test).width > maxWidth && cur !== ''){
+        lines.push(cur);
+        cur = text[i];
+      } else {
+        cur = test;
+      }
+    }
+    if(cur) lines.push(cur);
+    return lines;
+  }
+  function loadImg(src){
+    return new Promise(function(res){
+      // 空地址（异常数据）直接按缺失处理，避免中断整个导出
+      if(!src){ res(null); return; }
+      // data URL：直接可用，永不跨域受限
+      if(src.indexOf('data:') === 0){
+        var d = new Image();
+        d.onload = function(){ res(d); };
+        d.onerror = function(){ res(null); };
+        d.src = src;
+        return;
+      }
+      // 外部链接：带 crossOrigin 请求（加时间戳避免命中无跨域缓存）
+      var im = new Image();
+      var bust = (src.indexOf('?') >= 0 ? '&' : '?') + '_cb=' + Date.now();
+      im.crossOrigin = 'anonymous';
+      im.onload = function(){ res(im); };
+      im.onerror = function(){ res(null); };
+      im.src = src + bust;
+    });
+  }
+
+  (async function(){
+    var cache = {};
+    var failed = 0;
+    for(var i=0;i<ids.length;i++){
+      if(!(ids[i] in cache)){
+        var loaded = await loadImg(resolveImg(state.items[ids[i]]));
+        cache[ids[i]] = loaded;
+        if(!loaded) failed++;
+      }
+    }
+    var y = pad + titleH;
+    state.tiers.forEach(function(t){
+      var n = t.items.length;
+      var rows = Math.max(1, Math.ceil(n / MAX_COL));
+      var rh = cellH + rowPad*2;
+      var th = rows * rh;
+      // 轨道底（高度按行数翻倍）
+      ctx.fillStyle = 'rgba(0,0,0,.26)';
+      roundRect(pad, y, boardW - pad*2, th, 14); ctx.fill();
+      // 档位铭牌（垂直跨所有行居中）
+      ctx.fillStyle = t.color;
+      roundRect(pad+2, y+2, plateW, th-4, 12); ctx.fill();
+      ctx.fillStyle = '#14161b';
+      ctx.font = '900 24px "Noto Sans SC","Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center';
+      var lines = [];
+      String(t.label||'').split('\n').forEach(function(p){
+        var w = wrapText(p, plateW - 44);
+        if(w.length){ w.forEach(function(l){ lines.push(l); }); }
+        else { lines.push(''); }
+      });
+      var lh = 30;
+      if(lines.length * lh > th - 16){ lh = Math.max(16, Math.floor((th-16)/lines.length)); }
+      var startY = y + 2 + (th-4 - lines.length*lh)/2 + 18;
+      lines.forEach(function(ln, li){ ctx.fillText(ln, pad+2+plateW/2, startY + li*lh); });
+      ctx.textAlign = 'left';
+      // 图片：每行最多 MAX_COL 张，超过自动换行
+      var x0 = pad + plateW + 16;
+      t.items.forEach(function(id, k){
+        var it = state.items[id]; if(!it) return;
+        var row = Math.floor(k / MAX_COL), col = k % MAX_COL;
+        var ix = x0 + col*cellW;
+        var iy = y + row*rh + rowPad;
+        var im = cache[id];
+        if(im){
+          ctx.save();
+          ctx.beginPath(); ctx.rect(ix, iy, cellW, imgH); ctx.clip();
+          // 铺满封面格；超出部分居中裁切，保证相邻图片之间没有空隙。
+          var iw = im.naturalWidth || im.width || 1;
+          var ih = im.naturalHeight || im.height || 1;
+          var s = Math.max(cellW / iw, imgH / ih);
+          var dw = iw * s, dh = ih * s;
+          var dx = ix + (cellW - dw) / 2, dy = iy + (imgH - dh) / 2;
+          ctx.drawImage(im, dx, dy, dw, dh);
+          ctx.restore();
+        } else {
+          // 跨域受限无法读取时：占位框 + 居中显示名称
+          ctx.fillStyle = '#2a2e38';
+          ctx.fillRect(ix, iy, cellW, imgH);
+          ctx.strokeStyle = '#3a4150'; ctx.lineWidth = 1;
+          ctx.strokeRect(ix+.5, iy+.5, cellW-1, imgH-1);
+          ctx.fillStyle = '#9aa1ad';
+          ctx.font = '500 14px "Noto Sans SC","Microsoft YaHei",sans-serif';
+          ctx.textAlign = 'center';
+          var tlines = wrapText(String(it.text||''), cellW - 16).slice(0,3);
+          var t0 = iy + imgH/2 - (tlines.length-1)*8;
+          tlines.forEach(function(ln, li){ ctx.fillText(ln, ix+cellW/2, t0 + li*16); });
+          ctx.textAlign = 'left';
+        }
+        // 文字区使用统一底色，相邻标题以一条细竖线分隔。
+        ctx.fillStyle = 'rgba(0,0,0,.18)';
+        ctx.fillRect(ix, iy+imgH, cellW, cellH-imgH);
+        if(col > 0){
+          ctx.strokeStyle = 'rgba(255,255,255,.22)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(ix+.5, iy+imgH+7);
+          ctx.lineTo(ix+.5, iy+cellH-7);
+          ctx.stroke();
+        }
+        // 卡片名称（最多两行）
+        ctx.fillStyle = '#f2f0ea';
+        ctx.font = '500 15px "Noto Sans SC","Microsoft YaHei",sans-serif';
+        ctx.textAlign = 'center';
+        var nlines = wrapText(String(it.text||''), cellW - 12).slice(0,2);
+        nlines.forEach(function(ln, li){ ctx.fillText(ln, ix + cellW/2, iy+imgH+22 + li*18); });
+        ctx.textAlign = 'left';
+      });
+      y += th + tierGap;
+    });
+
+    try{
+      var url = canvas.toDataURL('image/png');
+      var fname = (state.title || '通用自定义排行榜制作工具').replace(/[\\/:*?"<>|]/g,'').trim().slice(0,30) || '通用自定义排行榜制作工具';
+      var a = document.createElement('a');
+      a.href = url; a.download = fname + '-' + dateStamp() + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      showToast(failed ? '已导出（'+failed+' 张图片跨域受限，以名称占位显示）' : '排行榜图片已导出', failed ? 'warn' : '');
+    }catch(e){
+      showToast('图片跨域受限导致导出失败，建议改用本地上传的图片','warn');
+    }
+  })();
+}
+
+function dateStamp(){
+  var d = new Date();
+  return ''+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate());
+}
+
+/* ---- Toast ---- */
+function showToast(msg, type){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2600);
+}
+
+/* ---- 隐藏文件输入（导入用） ---- */
+var importInput = document.createElement('input');
+importInput.type = 'file';
+importInput.accept = '.json,application/json';
+importInput.id = 'fileImport';
+importInput.style.display = 'none';
+document.body.appendChild(importInput);
+
+init();
+
+})();
+</script>
+</body>
+</html>

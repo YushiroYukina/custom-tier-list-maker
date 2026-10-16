@@ -1,0 +1,13 @@
+# Local/editor/generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+node_modules/
+*.log
+*.tmp
+*.zip
+# Personal files must stay outside the repository
+private/
+backups/
