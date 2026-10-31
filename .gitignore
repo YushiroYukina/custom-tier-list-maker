@@ -11,3 +11,5 @@ node_modules/
 # Personal files must stay outside the repository
 private/
 backups/
+test-results/
+__pycache__/

@@ -10,6 +10,8 @@
 
 ## 当前准备包
 
+v0.2.0 为手机浏览器适配版。发布文件统一为 `custom-tier-list-maker-v0.2.0.zip`、`custom-tier-list-maker.html` 和 `SHA256SUMS.txt`；更新说明见 [v0.2.0 发布说明](RELEASE_v0.2.0.md)。
+
 包含可直接运行的 `index.html`、功能与适用范围说明、通用模板、素材池示例、界面截图和变更记录。无需 Node.js、Python 或构建工具即可使用。未包含原始 Excel、个人榜单、个人封面、抓取脚本及缓存。
 
 ## 正式上传前

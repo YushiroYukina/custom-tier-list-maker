@@ -408,6 +408,53 @@
     .tier-track .item-card{flex:0 0 92px;width:92px}
     .item-card .thumb{height:72px}
   }
+
+  [hidden]{display:none!important}
+  .btn:disabled{opacity:.4;cursor:default}
+  a.btn{text-decoration:none}
+  /* 手机操作：封面允许滚动，独立手柄负责拖拽。 */
+  .item-card{touch-action:pan-y pinch-zoom;-webkit-touch-callout:none}
+  .item-card .grab-handle{z-index:2;pointer-events:auto;touch-action:none;cursor:grab}
+  .item-card img{-webkit-user-drag:none}
+  .move-options{display:grid;gap:8px;margin:12px 0}
+  .move-options button{justify-content:flex-start;white-space:normal;overflow-wrap:anywhere}
+  .export-preview{display:block;width:100%;height:auto;margin:12px 0;border-radius:8px}
+  .export-note{color:var(--text-2);overflow-wrap:anywhere}
+  @media (pointer:coarse){
+    .item-card .grab-handle{opacity:1;width:44px;height:44px;top:0;left:0;border-radius:0 0 10px 0}
+    .item-card:hover{transform:none}
+    .item-card .item-remove{display:none}
+    .tier-tools button,.title-edit,.btn,.palette button{min-width:44px;min-height:44px}
+  }
+  @media (max-width:768px){
+    header.topbar{position:relative;padding-top:env(safe-area-inset-top)}
+    .topbar-inner{padding:12px max(12px,env(safe-area-inset-right)) 12px max(12px,env(safe-area-inset-left))}
+    .brand{width:100%}.brand-titles{flex:1}.brand-titles h1{max-width:calc(100vw - 112px);font-size:18px}
+    .title-edit{width:44px;height:44px;flex-basis:44px}
+    .toolbar{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+    .toolbar .btn{justify-content:center;min-height:44px;padding:8px 4px;gap:5px}
+    .toolbar .btn .btn-text{display:inline}
+    main{padding:12px max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left))}
+    .tier-plate{clip-path:none;border-radius:12px 12px 0 0;padding:6px 8px;flex-wrap:wrap}
+    .tier-label{max-width:100%;flex:1;min-width:64px;overflow-wrap:anywhere}
+    .tier-tools{gap:2px}.tier-tools button{width:44px;height:44px}
+    .tier-track,.pool-track{gap:8px;padding:8px;min-width:0;overflow:visible}
+    .tier-track .item-card,.pool-track .item-card{width:calc((100% - 16px)/3);flex:0 0 calc((100% - 16px)/3);min-width:0}
+    .item-card .thumb{height:auto;aspect-ratio:2/3}
+    .item-card .item-name{padding:8px 5px;min-height:44px}
+    .hintbar{font-size:12px;padding:10px;gap:4px}
+    .pool-head{padding:10px;flex-wrap:wrap}.pool-hint{display:none!important}
+    .modal-mask{padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+    .modal{width:100%;max-height:90vh;max-height:90dvh;padding:16px;overscroll-behavior:contain}
+    .modal input[type=text],.save-tpl-row input[type=text],[contenteditable]:focus{font-size:16px}
+    .modal-actions{flex-wrap:wrap}.modal-actions .btn{min-height:44px;justify-content:center}
+    .tpl-row{flex-wrap:wrap}.tpl-ops{flex-wrap:wrap}.save-tpl-row{flex-wrap:wrap}
+    .palette{gap:4px}.palette button{width:44px;height:44px}
+    .tool-guide{width:100%;margin:12px 0!important;padding:12px!important;overflow-wrap:anywhere}
+    footer{padding-bottom:max(18px,env(safe-area-inset-bottom))}
+    .toast{bottom:max(20px,env(safe-area-inset-bottom))}
+  }
+
 </style>
 </head>
 <body>
@@ -462,11 +509,12 @@
     <span class="dot"></span>
     <span><b>玩法：</b>点按文字可直接改名</span><span class="sep">·</span>
     <span>档位文字<b>回车换行</b></span><span class="sep">·</span>
-    <span>按住卡片<b>拖拽</b>排序 · 单击可<b>放回素材池</b></span><span class="sep">·</span>
+    <span>按住卡片<b>拖拽</b>排序 · 点封面可<b>选择档位</b></span><span class="sep">·</span>
     <span>把底部素材拖进档位完成排行</span><span class="sep hint-hide-on-mobile">·</span>
-    <span class="hint-hide-on-mobile">触屏<b>长按</b>卡片后拖动</span>
+    <span class="hint-hide-on-mobile">手机滑动封面滚屏，按住<b>左上手柄</b>拖动</span>
   </div>
 
+  <p class="hintbar">手机操作：滑动封面可滚屏 · 按住左上角手柄拖动 · 轻点封面选择档位或调整顺序</p>
   <section id="board"></section>
 
   <section id="pool">
@@ -497,7 +545,7 @@
 </details>
 <footer>通用自定义排行榜制作工具 · 数据自动保存在本地浏览器 · 支持导出 / 导入 JSON 存档</footer>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (function(){
@@ -822,27 +870,19 @@ function findItemSource(id){
 }
 
 function onPointerDown(e){
+  if(down || e.isPrimary === false || (e.pointerType === 'mouse' && e.button !== 0)) return;
   var card = e.target.closest('.item-card');
-  if(!card) return;
-  // 文字编辑 / 移除按钮不触发拖拽
-  if(e.target.closest('.item-name') || e.target.closest('.item-remove')) return;
-  e.preventDefault();
-  var id = card.getAttribute('data-itemid');
-  var from = findItemSource(id);
+  if(!card || e.target.closest('.item-name, .item-remove')) return;
+  var from = findItemSource(card.getAttribute('data-itemid'));
   if(from == null) return;
-  down = {x:e.clientX, y:e.clientY, itemId:id, from:from, pointerId:e.pointerId, started:false, ghost:null, target:null, index:0, timer:null, longPress:false};
-  if(e.pointerType === 'mouse'){
-    // 鼠标：移动即拖
-  } else {
-    // 触屏：长按 300ms 进入拖拽，避免与滚动冲突
-    down.longPress = true;
-    down.timer = setTimeout(function(){
-      if(down){ startDrag(); }
-    }, 300);
-  }
-  if(down && !down.started && e.pointerType === 'mouse'){
-    try{ card.setPointerCapture(e.pointerId); }catch(err){}
-  }
+  var handle = e.target.closest('.grab-handle');
+  var touch = e.pointerType !== 'mouse';
+  // 封面上的触摸保留浏览器原生滚动；仅手柄使用 touch-action:none。
+  if(!touch || handle) e.preventDefault();
+  down = {x:e.clientX,y:e.clientY,itemId:card.getAttribute('data-itemid'),from:from,
+    pointerId:e.pointerId,started:false,ghost:null,target:null,timer:null,longPress:touch};
+  if(!touch || handle){try{card.setPointerCapture(e.pointerId);}catch(err){}}
+  if(touch && handle){down.longPress = false; startDrag();}
 }
 
 function onPointerMove(e){
@@ -866,16 +906,13 @@ function onPointerMove(e){
   updateDrag(e);
 }
 
+var lastDragAt = 0;
 function onPointerUp(e){
-  if(!down || (down.started && e.pointerId !== down.pointerId)) { return; }
+  if(!down || e.pointerId !== down.pointerId) return;
   if(down.started){
+    lastDragAt = Date.now();
+    updateDrag(e);
     finishDrag();
-  } else {
-    // 单击排行里的卡片（未拖动）→ 弹出操作菜单
-    var card = document.querySelector('.item-card[data-itemid="'+down.itemId+'"]');
-    if(card && down.from !== 'pool'){
-      openCardMenu(card, down.itemId);
-    }
   }
   cleanupDown();
 }
@@ -902,6 +939,17 @@ function startDrag(){
   d.ghost = ghost;
   card.classList.add('source-drag');
   document.body.classList.add('is-dragging');
+  d.clientX = d.x; d.clientY = d.y;
+  d.raf = requestAnimationFrame(autoScrollDrag);
+}
+
+function autoScrollDrag(){
+  if(!down || !down.started) return;
+  var d = down, edge = 64, speed = 0;
+  if(d.clientY < edge) speed = -Math.ceil((edge-d.clientY)/5);
+  else if(d.clientY > window.innerHeight-edge) speed = Math.ceil((d.clientY-window.innerHeight+edge)/5);
+  if(speed){window.scrollBy(0, speed); updateDrag({clientX:d.clientX,clientY:d.clientY});}
+  d.raf = requestAnimationFrame(autoScrollDrag);
 }
 
 function ensureInsertLine(){
@@ -931,6 +979,7 @@ function computeInsertIndex(track, x, y){
 
 function updateDrag(e){
   var d = down; if(!d || !d.ghost) return;
+  d.clientX = e.clientX; d.clientY = e.clientY;
   d.ghost.style.left = e.clientX + 'px';
   d.ghost.style.top = e.clientY + 'px';
 
@@ -1012,15 +1061,24 @@ function cleanupDown(){
     var tgt = document.querySelector('.tier-track.is-drop, .pool-track.is-drop');
     if(tgt) tgt.classList.remove('is-drop');
   }
+  if(down && down.raf) cancelAnimationFrame(down.raf);
   down = null;
 }
 
 /* ===================== 事件绑定 ===================== */
 function bindEvents(){
+  document.addEventListener('click', function(e){
+    var card = e.target.closest('.item-card');
+    if(!card || e.target.closest('.item-name, .item-remove, .grab-handle') || Date.now()-lastDragAt < 400) return;
+    openCardMenu(card, card.getAttribute('data-itemid'));
+  });
   document.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('pointermove', onPointerMove);
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('pointercancel', onPointerCancel);
+  window.addEventListener('blur', cleanupDown);
+  document.addEventListener('visibilitychange', function(){if(document.hidden) cleanupDown();});
+  document.addEventListener('keydown', function(e){if(e.key === 'Escape'){cleanupDown();closeModal();}});
 
   // 标题（顶栏点击编辑 / 铅笔按钮聚焦）
   var titleEl = document.getElementById('titleText');
@@ -1141,32 +1199,36 @@ function clearTierItems(id){
   showToast('已将该档位全部图片放回素材池');
 }
 function openCardMenu(card, itemId){
-  var old = document.querySelector('.card-menu');
-  if(old) old.remove();
-  var menu = document.createElement('div');
-  menu.className = 'card-menu';
-  var r = card.getBoundingClientRect();
-  var mw = 150;
-  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw)) + 'px';
-  menu.style.top = (r.bottom + 6) + 'px';
-  menu.innerHTML =
-    '<button data-cm="topool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="m7 9 5 5 5-5"/><path d="M4 20h16"/></svg>放回素材池</button>' +
-    '<button data-cm="remove" class="danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>删除卡片</button>';
-  document.body.appendChild(menu);
-  menu.querySelector('[data-cm="topool"]').addEventListener('click', function(){
-    moveToPool(itemId); menu.remove();
+  var from = findItemSource(itemId);
+  var choices = state.tiers.map(function(t, i){
+    return '<button class="btn" data-move="'+i+'">移至 '+esc(t.label || '未命名档位')+(from === t.id ? '（当前档位，放到末尾）' : '')+'</button>';
+  }).join('');
+  openModal('<h2>移动卡片</h2><p class="export-note">'+esc(state.items[itemId].text)+'</p>'+
+    '<div class="move-options">'+choices+
+    '<button class="btn" data-move="pool">放回素材池</button></div>'+
+    '<div class="modal-actions"><button class="btn" data-step="-1">向前一位</button><button class="btn" data-step="1">向后一位</button>'+
+    '<button class="btn danger-hover" data-delete>删除卡片</button><button class="btn primary" data-close>关闭</button></div>');
+  var mask = document.querySelector('.modal-mask');
+  mask.querySelectorAll('[data-move]').forEach(function(btn){
+    btn.onclick = function(){
+      var value = btn.getAttribute('data-move');
+      var dest = value === 'pool' ? state.pool : state.tiers[Number(value)].items;
+      var src = from === 'pool' ? state.pool : getTier(from).items;
+      src.splice(src.indexOf(itemId), 1); dest.push(itemId);
+      save(); render(); closeModal(); showToast('已移动卡片');
+    };
   });
-  menu.querySelector('[data-cm="remove"]').addEventListener('click', function(){
-    removeItem(itemId); menu.remove();
+  var arr = from === 'pool' ? state.pool : getTier(from).items;
+  mask.querySelectorAll('[data-step]').forEach(function(btn){
+    var pos = arr.indexOf(itemId), next = pos + Number(btn.getAttribute('data-step'));
+    btn.disabled = next < 0 || next >= arr.length;
+    btn.onclick = function(){
+      arr.splice(pos, 1); arr.splice(next, 0, itemId);
+      save(); render(); closeModal(); showToast('已调整顺序');
+    };
   });
-  setTimeout(function(){
-    document.addEventListener('pointerdown', function handler(ev){
-      if(menu && menu.parentNode && !menu.contains(ev.target)){
-        menu.remove();
-        document.removeEventListener('pointerdown', handler);
-      }
-    });
-  }, 0);
+  mask.querySelector('[data-delete]').onclick = function(){removeItem(itemId); closeModal();};
+  mask.querySelector('[data-close]').onclick = closeModal;
 }
 
 function openPalette(anchor, tierId){
@@ -1177,7 +1239,7 @@ function openPalette(anchor, tierId){
   // 固定在 body 上，避免被档位铭牌的 clip-path 裁切
   var r = anchor.getBoundingClientRect();
   pal.style.position = 'fixed';
-  pal.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 132)) + 'px';
+  pal.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 212)) + 'px';
   pal.style.top = (r.bottom + 6) + 'px';
   pal.style.zIndex = 90;
   TIER_COLORS.forEach(function(c){
@@ -1192,6 +1254,7 @@ function openPalette(anchor, tierId){
     pal.appendChild(b);
   });
   document.body.appendChild(pal);
+  pal.style.top = Math.max(8, Math.min(r.bottom + 6, window.innerHeight - pal.offsetHeight - 8)) + 'px';
   setTimeout(function(){
     document.addEventListener('pointerdown', function handler(ev){
       if(!pal.contains(ev.target)){ pal.remove(); document.removeEventListener('pointerdown', handler); }
@@ -1259,7 +1322,8 @@ function openAddItemModal(){
     closeModal();
     showToast('已添加');
   });
-  mask.querySelector('.upload-zone').addEventListener('click', function(){
+  mask.querySelector('.upload-zone').addEventListener('click', function(e){
+    if(e.target.id === 'fileAdd') return;
     mask.querySelector('#fileAdd').click();
   });
   mask.querySelector('#fileAdd').addEventListener('change', function(){
@@ -1480,6 +1544,29 @@ function onClear(){
 }
 
 /* ---- 导出图片 ---- */
+function showMobileExport(url, filename){
+  openModal('<h2>保存排行榜图片</h2><p class="export-note">可长按图片保存；也可点击下载，或通过系统分享保存到相册 / 文件。部分浏览器会在新页面打开图片。</p>'+
+    '<img class="export-preview" alt="排行榜导出预览">'+
+    '<div class="modal-actions"><a class="btn primary" id="saveExport">下载 PNG</a><button class="btn" id="shareExport">系统分享</button><button class="btn" data-close>关闭</button></div>');
+  var mask = document.querySelector('.modal-mask');
+  mask.querySelector('img').src = url;
+  var link = mask.querySelector('#saveExport'); link.href = url; link.download = filename;
+  mask.querySelector('[data-close]').onclick = closeModal;
+  var share = mask.querySelector('#shareExport');
+  share.hidden = true;
+  // 先准备文件；实际分享仍由用户点按触发，保留浏览器所需的用户手势。
+  fetch(url).then(function(r){return r.blob();}).then(function(blob){
+    var file = new File([blob], filename, {type:'image/png'});
+    if(!navigator.canShare || !navigator.canShare({files:[file]})) return;
+    share.hidden = false;
+    share.onclick = function(){
+      navigator.share({files:[file]}).catch(function(err){
+        if(err.name !== 'AbortError') showToast('分享未完成，请长按图片或点击下载','warn');
+      });
+    };
+  }).catch(function(){/* 下载和长按保存仍可用。 */});
+}
+
 function exportImage(){
   if(!hasAnyItem()){
     showToast('排行榜是空的，先放点图片吧','warn'); return;
@@ -1657,7 +1744,9 @@ function exportImage(){
       var fname = (state.title || '通用自定义排行榜制作工具').replace(/[\\/:*?"<>|]/g,'').trim().slice(0,30) || '通用自定义排行榜制作工具';
       var a = document.createElement('a');
       a.href = url; a.download = fname + '-' + dateStamp() + '.png';
-      document.body.appendChild(a); a.click(); a.remove();
+      if(window.matchMedia('(pointer:coarse), (max-width:768px)').matches){
+        showMobileExport(url, a.download);
+      }else{document.body.appendChild(a); a.click(); a.remove();}
       showToast(failed ? '已导出（'+failed+' 张图片跨域受限，以名称占位显示）' : '排行榜图片已导出', failed ? 'warn' : '');
     }catch(e){
       showToast('图片跨域受限导致导出失败，建议改用本地上传的图片','warn');

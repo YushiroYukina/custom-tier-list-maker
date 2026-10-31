@@ -4,19 +4,30 @@
 
 ## 下载即用
 
-**[下载完整便携版 ZIP](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/custom-tier-list-maker-v0.1.0.zip)** · [查看发布页](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest)
+**[下载完整便携版 ZIP](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/custom-tier-list-maker-v0.2.0.zip)** · [查看发布页](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest)
 
 | 你想怎么用 | 下载入口 | 打开方式 |
 | --- | --- | --- |
-| 推荐：工具、模板和说明一起下载 | [完整便携版 ZIP](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/custom-tier-list-maker-v0.1.0.zip) | 完整解压，双击 `index.html` |
+| 推荐：工具、模板和说明一起下载 | [完整便携版 ZIP](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/custom-tier-list-maker-v0.2.0.zip) | 完整解压，双击 `index.html` |
 | 只要一个能用的网页文件 | [单文件 HTML](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/custom-tier-list-maker.html) | 下载后用浏览器打开 |
 | 核对下载文件 | [SHA256 校验值](https://github.com/YushiroYukina/custom-tier-list-maker/releases/latest/download/SHA256SUMS.txt) | 比较文件的 SHA256 |
 
-无需安装，也不需要 Python、Node.js 或账号。建议在电脑上使用现代版 Edge、Chrome 等浏览器；已在 Windows 的 Tabbit 浏览器中验证基本操作。Mac、Linux 可尝试浏览器打开，尚未逐平台验收。手机和平板的触控体验尚未做真机验收。
+无需安装，也不需要 Python、Node.js 或账号。电脑和手机共用同一个网页。手机支持封面滑动滚屏、手柄拖拽、点按移档及 PNG 预览保存，建议通过 HTTPS 网站访问；参见[手机浏览器说明](docs/MOBILE.md)。已通过 Chromium 手机尺寸与触摸模拟检查，Android / iOS 真机、Mac、Linux 尚未逐平台验收。
 
 **三步开始：下载并打开 → 添加自己的图片 → 拖进档位并导出。** 可为动画、书籍、游戏、影视、美食等内容自定义分级。
 
 ![工具界面](assets/screenshot.png)
+
+## v0.2.0 手机适配更新
+
+- **滑动与拖拽分开操作**：滑动封面滚动页面，按住左上角手柄拖动卡片；在页面边缘停留会自动滚屏。
+- **长榜单也可点按整理**：轻点封面，直接选择目标档位、放回素材池或前后移动，无需从底部一路拖到顶部。
+- **窄屏布局**：工具栏保留文字，按钮与卡片自动排成三列，调色板和弹窗适配手机尺寸。
+- **图片保存**：手机导出 PNG 后显示预览，可长按保存、下载，或在浏览器支持时使用系统分享。
+
+电脑和手机共用同一份 HTML，继续兼容旧 JSON 存档。升级前请先导出 JSON 备份，自动保存不会跨设备同步。手机建议通过 HTTPS 静态网站访问；仓库目前未启用在线托管，部分文件管理器的 HTML 预览无法运行工具。详见[手机浏览器说明](docs/MOBILE.md)。
+
+验证：31 项 Chromium 自动检查通过，包含手机尺寸、触摸滚动与拖拽、存档及导出；Android / iOS 真机的相册保存、系统分享等仍待验收。完整记录见[验证说明](docs/VERIFICATION.md)。
 
 ## 快速开始
 
@@ -34,7 +45,7 @@
 | --- | --- |
 | 自定义标题与档位 | 直接编辑文字，档位支持手动换行、新增、删除和配色 |
 | 图文卡片与素材池 | 本地图片批量添加、图片链接添加、文字修改、删除、回到素材池 |
-| 拖拽整理 | 档位内排序、档位间移动、从素材池加入档位；提供触屏长按拖拽交互 |
+| 拖拽整理 | 鼠标拖拽或触屏手柄拖拽，支持边缘自动滚屏；点按封面也能移档和前后排序 |
 | 结构模板 | 保存和复用档位文字、颜色与标题，保存在当前浏览器中 |
 | JSON 存档 | 保存完整当前状态，包括图片引用、文字、档位、素材池和顺序；可重新导入继续编辑 |
 | PNG 导出 | 每行最多 12 张卡片，超出自动换行；相邻封面无间隙，标题区用细线分隔 |
@@ -61,6 +72,7 @@
 ## 示例与说明
 
 - [详细使用说明](docs/USER_GUIDE.md)
+- [手机浏览器说明](docs/MOBILE.md)
 - [通用空白模板](examples/通用空白模板.json)
 - [素材池示例](examples/素材池示例.json)
 - [GitHub 发布准备说明](docs/PUBLISHING.md)
